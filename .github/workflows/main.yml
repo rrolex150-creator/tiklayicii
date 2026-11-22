@@ -1,0 +1,1308 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Proje dosyalarini olustur
+        run: |
+          mkdir -p proj/app/src/main/java/com/benim/tiklayici
+          mkdir -p proj/app/src/main/res/xml proj/app/src/main/res/values
+          mkdir -p proj/app/src/main/res/drawable proj/app/src/main/res/mipmap-anydpi-v26 proj/app/src/main/res/mipmap-anydpi
+
+          cat > proj/settings.gradle <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "OtoAv"
+          include ':app'
+          EOF
+
+          cat > proj/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+          }
+          EOF
+
+          cat > proj/gradle.properties <<'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          EOF
+
+          cat > proj/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.benim.tiklayici'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.benim.tiklayici'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 2
+                  versionName '2.0'
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = '17' }
+          }
+          dependencies {
+              implementation 'com.google.mlkit:text-recognition:16.0.1'
+          }
+          EOF
+
+          cat > proj/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:label="@string/app_name"
+                  android:icon="@mipmap/ic_launcher"
+                  android:theme="@android:style/Theme.Material.Light">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+                  <service
+                      android:name=".AvService"
+                      android:label="@string/app_name"
+                      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+                      android:exported="false">
+                      <intent-filter>
+                          <action android:name="android.accessibilityservice.AccessibilityService"/>
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.accessibilityservice"
+                          android:resource="@xml/accessibility_config"/>
+                  </service>
+              </application>
+          </manifest>
+          EOF
+
+          cat > proj/app/src/main/res/values/strings.xml <<'EOF'
+          <resources>
+              <string name="app_name">Oto Av</string>
+              <string name="aciklama">Oto av: ESP, otomatik saldiri ve buff takibi</string>
+          </resources>
+          EOF
+
+          cat > proj/app/src/main/res/xml/accessibility_config.xml <<'EOF'
+          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+              android:canPerformGestures="true"
+              android:canTakeScreenshot="true"
+              android:accessibilityEventTypes="typeWindowStateChanged"
+              android:accessibilityFeedbackType="feedbackGeneric"
+              android:notificationTimeout="200"
+              android:description="@string/aciklama" />
+          EOF
+
+          cat > proj/app/src/main/res/drawable/ic_logo.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+              <path
+                  android:fillColor="#15151C"
+                  android:pathData="M4,54 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0 z" />
+              <path
+                  android:fillColor="#00000000"
+                  android:strokeColor="#E0B040"
+                  android:strokeWidth="4"
+                  android:pathData="M16,54 a38,38 0 1,0 76,0 a38,38 0 1,0 -76,0 z" />
+              <path
+                  android:fillColor="#00000000"
+                  android:strokeColor="#E0B040"
+                  android:strokeWidth="5"
+                  android:strokeLineCap="round"
+                  android:pathData="M54,10 L54,30 M54,78 L54,98 M10,54 L30,54 M78,54 L98,54" />
+              <path
+                  android:fillColor="#00000000"
+                  android:strokeColor="#E0B040"
+                  android:strokeWidth="3.5"
+                  android:pathData="M42,54 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0 z" />
+              <path
+                  android:fillColor="#FF5252"
+                  android:pathData="M49,54 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 z" />
+          </vector>
+          EOF
+
+          cat > proj/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@android:color/black" />
+              <foreground>
+                  <inset android:drawable="@drawable/ic_logo" android:inset="16%" />
+              </foreground>
+          </adaptive-icon>
+          EOF
+
+          cat > proj/app/src/main/res/mipmap-anydpi/ic_launcher.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+              <item android:drawable="@drawable/ic_logo" />
+          </layer-list>
+          EOF
+
+          cat > proj/app/src/main/java/com/benim/tiklayici/MainActivity.kt <<'EOF'
+          package com.benim.tiklayici
+
+          import android.app.Activity
+          import android.content.Intent
+          import android.os.Bundle
+          import android.provider.Settings
+          import android.view.Gravity
+          import android.widget.Button
+          import android.widget.ImageView
+          import android.widget.LinearLayout
+          import android.widget.TextView
+
+          class MainActivity : Activity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  val d = resources.displayMetrics.density
+                  val layout = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      gravity = Gravity.CENTER_HORIZONTAL
+                      setPadding(48, 96, 48, 48)
+                  }
+                  layout.addView(ImageView(this).apply {
+                      setImageResource(R.drawable.ic_logo)
+                  }, LinearLayout.LayoutParams((96 * d).toInt(), (96 * d).toInt()))
+                  layout.addView(TextView(this).apply {
+                      text = "OTO AV"
+                      textSize = 24f
+                      gravity = Gravity.CENTER
+                  })
+                  layout.addView(TextView(this).apply {
+                      text = "1) Erişilebilirlik ayarlarını aç\n" +
+                          "2) \"Oto Av\" servisini etkinleştir\n" +
+                          "3) Oyunu aç, ekrandaki yüzen pencereden:\n" +
+                          "   • ESP'yi aç, listeden vurulacak canavarları seç\n" +
+                          "   • Hava / Öfke için \"İkon\" ile buff ikonunu seç\n" +
+                          "   • ▶ BAŞLAT ile oto avı başlat\n\n" +
+                          "Not: Android 11 veya üstü gerekir."
+                      textSize = 16f
+                      setPadding(0, 32, 0, 32)
+                  })
+                  layout.addView(Button(this).apply {
+                      text = "Erişilebilirlik Ayarları"
+                      setOnClickListener {
+                          startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                      }
+                  })
+                  setContentView(layout)
+              }
+          }
+          EOF
+
+          cat > proj/app/src/main/java/com/benim/tiklayici/AvService.kt <<'EOF'
+          package com.benim.tiklayici
+
+          import android.accessibilityservice.AccessibilityService
+          import android.accessibilityservice.GestureDescription
+          import android.annotation.TargetApi
+          import android.content.Context
+          import android.content.SharedPreferences
+          import android.graphics.Bitmap
+          import android.graphics.Canvas
+          import android.graphics.Color
+          import android.graphics.Paint
+          import android.graphics.Path
+          import android.graphics.PixelFormat
+          import android.graphics.Rect
+          import android.graphics.Typeface
+          import android.graphics.drawable.GradientDrawable
+          import android.os.Build
+          import android.os.Handler
+          import android.os.Looper
+          import android.os.SystemClock
+          import android.util.DisplayMetrics
+          import android.view.Display
+          import android.view.Gravity
+          import android.view.MotionEvent
+          import android.view.View
+          import android.view.ViewGroup
+          import android.view.WindowManager
+          import android.view.accessibility.AccessibilityEvent
+          import android.widget.Button
+          import android.widget.CheckBox
+          import android.widget.FrameLayout
+          import android.widget.ImageView
+          import android.widget.LinearLayout
+          import android.widget.ScrollView
+          import android.widget.TextView
+          import com.google.mlkit.vision.common.InputImage
+          import com.google.mlkit.vision.text.TextRecognition
+          import com.google.mlkit.vision.text.TextRecognizer
+          import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+          import java.util.Locale
+          import java.util.Random
+          import java.util.concurrent.CountDownLatch
+          import java.util.concurrent.Executors
+          import java.util.concurrent.TimeUnit
+          import kotlin.math.abs
+          import kotlin.math.max
+          import kotlin.math.sqrt
+
+          /** Ekranda tespit edilen bir canavar (isim etiketinin konumu piksel cinsinden). */
+          class Mob(var name: String, val l: Float, val t: Float, val r: Float, val b: Float) {
+              var sel = false
+              var cur = false
+              val cx: Float get() = (l + r) / 2f
+              val cy: Float get() = (t + b) / 2f
+          }
+
+          /** Oyunun üstüne çizilen ESP katmanı (dokunmayı geçirir). */
+          class EspView(ctx: Context) : View(ctx) {
+              var mobs: List<Mob> = emptyList()
+              var sw = 1
+              var sh = 1
+              private val loc = IntArray(2)
+              private val boxP = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+              private val lineP = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                  style = Paint.Style.STROKE
+                  strokeWidth = 2.5f
+              }
+              private val txtP = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                  color = Color.WHITE
+                  isFakeBoldText = true
+                  setShadowLayer(5f, 0f, 0f, Color.BLACK)
+              }
+
+              override fun onDraw(c: Canvas) {
+                  getLocationOnScreen(loc)
+                  c.translate(-loc[0].toFloat(), -loc[1].toFloat())
+                  val px = sw * 0.52f
+                  val py = sh * 0.55f
+                  boxP.strokeWidth = max(3f, sh * 0.004f)
+                  txtP.textSize = sh * 0.028f
+                  for (m in mobs) {
+                      val col = if (m.cur) 0xFFFFE000.toInt() else if (m.sel) 0xFF00FF66.toInt() else 0xFF00C8FF.toInt()
+                      val bw = max(m.r - m.l, sh * 0.09f)
+                      val left = m.cx - bw / 2f
+                      val top = m.t - sh * 0.006f
+                      val bottom = m.b + sh * 0.17f
+                      boxP.color = col
+                      c.drawRect(left, top, left + bw, bottom, boxP)
+                      lineP.color = col
+                      lineP.alpha = 150
+                      c.drawLine(px, py, m.cx, bottom, lineP)
+                      c.drawText(m.name, left, top - sh * 0.008f, txtP)
+                  }
+              }
+          }
+
+          class AvService : AccessibilityService() {
+
+              private class Buff(val id: String, val title: String) {
+                  var enabled = false
+                  var key = 0
+                  var tpl: IntArray? = null
+                  var present = true
+                  var misses = 0
+                  var lastPress = 0L
+                  var thumb: ImageView? = null
+                  var keyBtn: Button? = null
+                  var check: CheckBox? = null
+              }
+
+              private class ScanOut(val w: Int, val h: Int, val mobs: List<Mob>, val slots: List<IntArray?>)
+
+              companion object {
+                  const val SLOTS = 8          // sol üstteki buff ikon yuvası sayısı
+                  const val TS = 12            // ikon şablon boyutu (12x12)
+                  const val ATK_X = 0.862f     // saldırı tuşu
+                  const val ATK_Y = 0.693f
+                  val SKILL_X = floatArrayOf(0.727f, 0.715f, 0.715f, 0.727f)
+                  val SKILL_Y = floatArrayOf(0.560f, 0.648f, 0.741f, 0.826f)
+                  val ROMAN = arrayOf("I", "II", "III", "IV")
+                  val OFF_NAMES = arrayOf("Yakın", "Orta", "Uzak")
+                  val OFF_VALUES = floatArrayOf(0.07f, 0.09f, 0.115f)
+                  val GOLD = 0xFFE0B040.toInt()
+              }
+
+              private val ui = Handler(Looper.getMainLooper())
+              private val worker = Executors.newSingleThreadExecutor()
+              private val rnd = Random()
+              private val tr = Locale("tr")
+
+              private lateinit var prefs: SharedPreferences
+              private lateinit var wm: WindowManager
+              private lateinit var recognizer: TextRecognizer
+              private lateinit var esp: EspView
+              private lateinit var holder: FrameLayout
+              private lateinit var bubble: ImageView
+              private lateinit var full: LinearLayout
+              private lateinit var lp: WindowManager.LayoutParams
+              private lateinit var statusTv: TextView
+              private lateinit var startBtn: Button
+              private lateinit var mobsBox: LinearLayout
+              private lateinit var pickBox: LinearLayout
+              private lateinit var offBtn: Button
+              private var built = false
+
+              // ayarlar
+              private var espOn = true
+              private var allMobs = false
+              private var offIdx = 1
+              private val known = LinkedHashMap<String, Boolean>()
+              private val buffs = listOf(Buff("hava", "Hava"), Buff("ofke", "Öfke"))
+
+              // durum (ana thread)
+              private var running = false
+              private var scanning = false
+              private var failCount = 0
+              private var lastScanOk = 0L
+              private var scrW = 1
+              private var scrH = 1
+              private var visible: List<Mob> = emptyList()
+              private var target: Mob? = null
+              private var lastSelect = 0L
+              private var pickFor: Buff? = null
+              private var lastSig = ""
+
+              // worker thread
+              private var px = IntArray(0)
+              private val ocrCache = HashMap<String, String>()
+
+              // ------------------------------------------------------------------ yaşam döngüsü
+
+              override fun onServiceConnected() {
+                  if (built) return
+                  built = true
+                  prefs = getSharedPreferences("av", MODE_PRIVATE)
+                  wm = getSystemService(WINDOW_SERVICE) as WindowManager
+                  recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                  loadPrefs()
+                  buildUi()
+                  ui.post(scanLoop)
+              }
+
+              override fun onAccessibilityEvent(e: AccessibilityEvent?) {}
+
+              override fun onInterrupt() {
+                  running = false
+                  if (built) {
+                      startBtn.text = "▶ BAŞLAT"
+                      setRunColor()
+                  }
+              }
+
+              override fun onDestroy() {
+                  running = false
+                  ui.removeCallbacksAndMessages(null)
+                  worker.shutdownNow()
+                  if (built) {
+                      try { wm.removeView(holder) } catch (e: Exception) {}
+                      try { wm.removeView(esp) } catch (e: Exception) {}
+                      try { recognizer.close() } catch (e: Exception) {}
+                  }
+                  built = false
+                  super.onDestroy()
+              }
+
+              // ------------------------------------------------------------------ ayarlar
+
+              private fun loadPrefs() {
+                  espOn = prefs.getBoolean("esp", true)
+                  allMobs = prefs.getBoolean("all", false)
+                  offIdx = prefs.getInt("off", 1).coerceIn(0, 2)
+                  for ((i, b) in buffs.withIndex()) {
+                      b.enabled = prefs.getBoolean(b.id + "_en", false)
+                      b.key = prefs.getInt(b.id + "_key", i).coerceIn(0, 3)
+                      val s = prefs.getString(b.id + "_tpl", null)
+                      if (s != null) {
+                          try {
+                              val arr = s.split(",").map { it.toInt() }.toIntArray()
+                              if (arr.size == TS * TS) b.tpl = arr
+                          } catch (e: Exception) {}
+                      }
+                      if (b.tpl == null) b.enabled = false
+                  }
+                  val m = prefs.getString("mobs", "") ?: ""
+                  for (part in m.split("|")) {
+                      val idx = part.lastIndexOf('=')
+                      if (idx > 0) known[part.substring(0, idx)] = part.substring(idx + 1) == "1"
+                  }
+              }
+
+              private fun saveMobs() {
+                  val s = known.entries.joinToString("|") { it.key + "=" + (if (it.value) "1" else "0") }
+                  prefs.edit().putString("mobs", s).apply()
+              }
+
+              private fun saveBuff(b: Buff) {
+                  val e = prefs.edit()
+                  e.putBoolean(b.id + "_en", b.enabled)
+                  e.putInt(b.id + "_key", b.key)
+                  val t = b.tpl
+                  if (t != null) e.putString(b.id + "_tpl", t.joinToString(","))
+                  e.apply()
+              }
+
+              // ------------------------------------------------------------------ arayüz
+
+              private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+              private fun rounded(color: Int, radius: Int, stroke: Int = 0): GradientDrawable =
+                  GradientDrawable().apply {
+                      setColor(color)
+                      cornerRadius = dp(radius).toFloat()
+                      if (stroke != 0) setStroke(dp(2), stroke)
+                  }
+
+              private fun btn(t: String, bg: Int, onClick: () -> Unit): Button = Button(this).apply {
+                  text = t
+                  isAllCaps = false
+                  setTextColor(Color.WHITE)
+                  textSize = 13f
+                  minHeight = 0
+                  minimumHeight = 0
+                  minWidth = 0
+                  minimumWidth = 0
+                  setPadding(dp(8), dp(4), dp(8), dp(4))
+                  background = rounded(bg, 8)
+                  setOnClickListener { onClick() }
+              }
+
+              private fun label(t: String, color: Int = Color.WHITE, size: Float = 13f): TextView =
+                  TextView(this).apply {
+                      text = t
+                      setTextColor(color)
+                      textSize = size
+                  }
+
+              @Suppress("DEPRECATION")
+              private fun buildUi() {
+                  val dm = DisplayMetrics()
+                  wm.defaultDisplay.getRealMetrics(dm)
+                  scrW = dm.widthPixels
+                  scrH = dm.heightPixels
+
+                  // --- ESP katmanı (tam ekran, dokunmayı geçirir)
+                  esp = EspView(this)
+                  esp.sw = scrW
+                  esp.sh = scrH
+                  esp.visibility = if (espOn) View.VISIBLE else View.GONE
+                  val elp = WindowManager.LayoutParams(
+                      WindowManager.LayoutParams.MATCH_PARENT,
+                      WindowManager.LayoutParams.MATCH_PARENT,
+                      WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                          WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                          WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                          WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                      PixelFormat.TRANSLUCENT
+                  )
+                  elp.gravity = Gravity.TOP or Gravity.START
+                  if (Build.VERSION.SDK_INT >= 28) {
+                      elp.layoutInDisplayCutoutMode =
+                          WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                  }
+                  wm.addView(esp, elp)
+
+                  // --- küçük logo balonu
+                  bubble = ImageView(this).apply {
+                      setImageResource(R.drawable.ic_logo)
+                      visibility = View.GONE
+                  }
+
+                  // --- tam pencere
+                  full = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      background = rounded(0xEE15151C.toInt(), 12, GOLD)
+                      setPadding(dp(8), dp(6), dp(8), dp(8))
+                  }
+
+                  val header = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER_VERTICAL
+                  }
+                  val logo = ImageView(this).apply { setImageResource(R.drawable.ic_logo) }
+                  header.addView(logo, LinearLayout.LayoutParams(dp(30), dp(30)))
+                  header.addView(
+                      label("  OTO AV", GOLD, 16f).apply { typeface = Typeface.DEFAULT_BOLD },
+                      LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                  )
+                  header.addView(btn("–", 0xFF333340.toInt()) { collapse() }, LinearLayout.LayoutParams(dp(40), dp(32)))
+                  full.addView(header)
+
+                  statusTv = label("Hazır", 0xFFBBBBBB.toInt(), 12f)
+                  full.addView(statusTv)
+
+                  val ctrl = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER_VERTICAL
+                  }
+                  startBtn = btn("▶ BAŞLAT", 0xFF1E7A3C.toInt()) { toggleRun() }
+                  ctrl.addView(startBtn, LinearLayout.LayoutParams(0, dp(38), 1f))
+                  val espCb = CheckBox(this).apply {
+                      text = "ESP"
+                      setTextColor(Color.WHITE)
+                      isChecked = espOn
+                      setOnCheckedChangeListener { _, c ->
+                          espOn = c
+                          prefs.edit().putBoolean("esp", c).apply()
+                          esp.visibility = if (c) View.VISIBLE else View.GONE
+                          if (!c) {
+                              esp.mobs = emptyList()
+                              esp.invalidate()
+                          }
+                      }
+                  }
+                  ctrl.addView(espCb)
+                  full.addView(ctrl)
+
+                  // --- kaydırılabilir içerik
+                  val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+                  content.addView(label("CANAVARLAR (ESP)", GOLD, 12f).apply { typeface = Typeface.DEFAULT_BOLD })
+                  val allCb = CheckBox(this).apply {
+                      text = "Hepsine saldır"
+                      setTextColor(Color.WHITE)
+                      textSize = 13f
+                      isChecked = allMobs
+                      setOnCheckedChangeListener { _, c ->
+                          allMobs = c
+                          prefs.edit().putBoolean("all", c).apply()
+                      }
+                  }
+                  content.addView(allCb)
+                  mobsBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                  content.addView(mobsBox)
+                  content.addView(btn("Listeyi temizle", 0xFF333340.toInt()) {
+                      known.clear()
+                      saveMobs()
+                      lastSig = ""
+                      refreshMobs()
+                  })
+
+                  content.addView(label("BUFF TAKİBİ", GOLD, 12f).apply {
+                      typeface = Typeface.DEFAULT_BOLD
+                      setPadding(0, dp(10), 0, 0)
+                  })
+                  content.addView(label("Buff aktifken \"İkon\"a bas, ikonu seç.", 0xFFAAAAAA.toInt(), 11f))
+                  for (b in buffs) content.addView(buffRow(b))
+                  pickBox = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      visibility = View.GONE
+                  }
+                  content.addView(pickBox)
+
+                  offBtn = btn("Tık ofseti: " + OFF_NAMES[offIdx], 0xFF333340.toInt()) {
+                      offIdx = (offIdx + 1) % OFF_NAMES.size
+                      offBtn.text = "Tık ofseti: " + OFF_NAMES[offIdx]
+                      prefs.edit().putInt("off", offIdx).apply()
+                  }
+                  content.addView(offBtn, LinearLayout.LayoutParams(
+                      ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                  ).apply { topMargin = dp(10) })
+
+                  val scroll = ScrollView(this)
+                  scroll.addView(content)
+                  full.addView(scroll, LinearLayout.LayoutParams(
+                      ViewGroup.LayoutParams.MATCH_PARENT, (scrH * 0.45f).toInt()
+                  ))
+
+                  holder = FrameLayout(this)
+                  holder.addView(bubble, FrameLayout.LayoutParams(dp(52), dp(52)))
+                  holder.addView(full, FrameLayout.LayoutParams(dp(235), ViewGroup.LayoutParams.WRAP_CONTENT))
+
+                  lp = WindowManager.LayoutParams(
+                      WindowManager.LayoutParams.WRAP_CONTENT,
+                      WindowManager.LayoutParams.WRAP_CONTENT,
+                      WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                      PixelFormat.TRANSLUCENT
+                  ).apply {
+                      gravity = Gravity.TOP or Gravity.START
+                      x = dp(60)
+                      y = dp(60)
+                  }
+
+                  makeDrag(header, null)
+                  makeDrag(bubble) { expand() }
+
+                  wm.addView(holder, lp)
+                  refreshMobs()
+              }
+
+              private fun collapse() {
+                  full.visibility = View.GONE
+                  bubble.visibility = View.VISIBLE
+              }
+
+              private fun expand() {
+                  bubble.visibility = View.GONE
+                  full.visibility = View.VISIBLE
+              }
+
+              private fun makeDrag(v: View, onTap: (() -> Unit)?) {
+                  var sx = 0f
+                  var sy = 0f
+                  var ox = 0
+                  var oy = 0
+                  var moved = false
+                  v.setOnTouchListener { _, e ->
+                      when (e.action) {
+                          MotionEvent.ACTION_DOWN -> {
+                              sx = e.rawX; sy = e.rawY; ox = lp.x; oy = lp.y; moved = false
+                          }
+                          MotionEvent.ACTION_MOVE -> {
+                              val dx = e.rawX - sx
+                              val dy = e.rawY - sy
+                              if (abs(dx) > 10 || abs(dy) > 10) moved = true
+                              if (moved) {
+                                  lp.x = ox + dx.toInt()
+                                  lp.y = oy + dy.toInt()
+                                  wm.updateViewLayout(holder, lp)
+                              }
+                          }
+                          MotionEvent.ACTION_UP -> {
+                              if (!moved) onTap?.invoke()
+                          }
+                      }
+                      true
+                  }
+              }
+
+              private fun setStatus(s: String) {
+                  if (built) statusTv.text = s
+              }
+
+              private fun setRunColor() {
+                  startBtn.background = rounded(if (running) 0xFFB36B00.toInt() else 0xFF1E7A3C.toInt(), 8)
+              }
+
+              private fun tplBitmap(t: IntArray): Bitmap =
+                  Bitmap.createScaledBitmap(
+                      Bitmap.createBitmap(t, TS, TS, Bitmap.Config.ARGB_8888), dp(44), dp(44), true
+                  )
+
+              private fun buffRow(b: Buff): View {
+                  val row = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER_VERTICAL
+                  }
+                  val cb = CheckBox(this).apply {
+                      text = b.title
+                      setTextColor(Color.WHITE)
+                      textSize = 13f
+                      isChecked = b.enabled
+                      setOnCheckedChangeListener { _, c ->
+                          if (c && b.tpl == null) {
+                              isChecked = false
+                              setStatus("Önce " + b.title + " ikonunu seç")
+                          } else {
+                              b.enabled = c
+                              saveBuff(b)
+                          }
+                      }
+                  }
+                  b.check = cb
+                  row.addView(cb, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+
+                  val iv = ImageView(this)
+                  b.thumb = iv
+                  val t = b.tpl
+                  if (t != null) iv.setImageBitmap(tplBitmap(t))
+                  row.addView(iv, LinearLayout.LayoutParams(dp(28), dp(28)))
+
+                  row.addView(btn("İkon", 0xFF333340.toInt()) { startPick(b) },
+                      LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34)).apply { leftMargin = dp(4) })
+
+                  val kb = btn("Tuş " + ROMAN[b.key], 0xFF333340.toInt()) {
+                      b.key = (b.key + 1) % 4
+                      b.keyBtn?.text = "Tuş " + ROMAN[b.key]
+                      saveBuff(b)
+                  }
+                  b.keyBtn = kb
+                  row.addView(kb, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34)).apply { leftMargin = dp(4) })
+                  return row
+              }
+
+              private fun startPick(b: Buff) {
+                  pickFor = b
+                  pickBox.removeAllViews()
+                  pickBox.addView(label("İkonlar taranıyor…", 0xFFAAAAAA.toInt(), 12f))
+                  pickBox.visibility = View.VISIBLE
+              }
+
+              private fun showPick(b: Buff, slots: List<IntArray?>) {
+                  pickBox.removeAllViews()
+                  val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                  var any = false
+                  for (s in slots) {
+                      if (s == null) continue
+                      any = true
+                      val iv = ImageView(this).apply {
+                          setImageBitmap(tplBitmap(s))
+                          setPadding(dp(2), dp(2), dp(2), dp(2))
+                          setOnClickListener {
+                              b.tpl = s
+                              b.enabled = true
+                              b.present = true
+                              b.misses = 0
+                              saveBuff(b)
+                              b.thumb?.setImageBitmap(tplBitmap(s))
+                              b.check?.isChecked = true
+                              pickFor = null
+                              pickBox.visibility = View.GONE
+                              setStatus(b.title + " ikonu kaydedildi")
+                          }
+                      }
+                      row.addView(iv, LinearLayout.LayoutParams(dp(44), dp(44)))
+                  }
+                  if (!any) {
+                      pickBox.addView(label("Buff ikonu bulunamadı. Buff aktif mi?", 0xFFFFB000.toInt(), 12f))
+                  } else {
+                      pickBox.addView(label(b.title + " hangisi? Dokun:", GOLD, 12f))
+                      pickBox.addView(row)
+                  }
+                  pickBox.addView(btn("İptal", 0xFF333340.toInt()) {
+                      pickFor = null
+                      pickBox.visibility = View.GONE
+                  })
+              }
+
+              private fun refreshMobs() {
+                  mobsBox.removeAllViews()
+                  if (known.isEmpty()) {
+                      mobsBox.addView(label("Henüz canavar görülmedi", 0xFF888888.toInt(), 12f))
+                      return
+                  }
+                  for (en in known.entries.toList()) {
+                      val name = en.key
+                      val n = visible.count { it.name == name }
+                      mobsBox.addView(CheckBox(this).apply {
+                          text = if (n > 0) name + "  ·" + n else name
+                          setTextColor(if (n > 0) Color.WHITE else 0xFF888888.toInt())
+                          textSize = 13f
+                          isChecked = en.value
+                          setOnCheckedChangeListener { _, c ->
+                              known[name] = c
+                              saveMobs()
+                          }
+                      })
+                  }
+              }
+
+              // ------------------------------------------------------------------ başlat / durdur
+
+              private fun toggleRun() {
+                  running = !running
+                  startBtn.text = if (running) "■ DURDUR" else "▶ BAŞLAT"
+                  setRunColor()
+                  if (running) {
+                      target = null
+                      for (b in buffs) {
+                          b.misses = 0
+                          b.lastPress = 0L
+                      }
+                      setStatus("Başladı")
+                      ui.post(huntLoop)
+                  } else {
+                      setStatus("Durdu")
+                  }
+              }
+
+              // ------------------------------------------------------------------ tarama
+
+              private val scanLoop = object : Runnable {
+                  override fun run() {
+                      if (built && (espOn || running || pickFor != null)) requestScan()
+                      ui.postDelayed(this, 750)
+                  }
+              }
+
+              @TargetApi(30)
+              private fun requestScan() {
+                  if (scanning) return
+                  if (Build.VERSION.SDK_INT < 30) {
+                      setStatus("Android 11 veya üstü gerekli")
+                      return
+                  }
+                  scanning = true
+                  val loc = IntArray(2)
+                  holder.getLocationOnScreen(loc)
+                  val pr = Rect(loc[0], loc[1], loc[0] + holder.width, loc[1] + holder.height)
+                  takeScreenshot(Display.DEFAULT_DISPLAY, worker, object : AccessibilityService.TakeScreenshotCallback {
+                      override fun onSuccess(result: AccessibilityService.ScreenshotResult) {
+                          var out: ScanOut? = null
+                          try {
+                              val hb = result.hardwareBuffer
+                              val hw = Bitmap.wrapHardwareBuffer(hb, result.colorSpace)
+                              val bmp = hw?.copy(Bitmap.Config.ARGB_8888, false)
+                              hw?.recycle()
+                              hb.close()
+                              if (bmp != null) {
+                                  out = analyze(bmp, pr)
+                                  bmp.recycle()
+                              }
+                          } catch (e: Throwable) {
+                              out = null
+                          }
+                          ui.post {
+                              scanning = false
+                              onScan(out)
+                          }
+                      }
+
+                      override fun onFailure(errorCode: Int) {
+                          ui.post {
+                              scanning = false
+                              onScan(null)
+                          }
+                      }
+                  })
+              }
+
+              private fun blocked(x: Int, y: Int, w: Int, h: Int, pr: Rect): Boolean {
+                  val fx = x.toFloat() / w
+                  val fy = y.toFloat() / h
+                  if (fx > 0.69f && fy < 0.16f) return true      // sağ üst menü düğmeleri
+                  if (fx > 0.89f && fy < 0.31f) return true      // mini harita
+                  if (fx > 0.69f && fy > 0.40f) return true      // sağ alt kontrol düğmeleri
+                  if (fx < 0.27f && fy < 0.21f) return true      // profil, can/mana, buff şeridi
+                  if (fx < 0.12f && fy > 0.27f && fy < 0.40f) return true  // görev parşömeni
+                  return pr.contains(x, y)
+              }
+
+              private fun analyze(bmp: Bitmap, pr: Rect): ScanOut {
+                  val w = bmp.width
+                  val h = bmp.height
+                  if (px.size != w * h) px = IntArray(w * h)
+                  bmp.getPixels(px, 0, w, 0, 0, w, h)
+
+                  // 1) kırmızı isim etiketi pikselleri -> 8px'lik hücre sayımı
+                  val cs = 8
+                  val gw = (w + cs - 1) / cs
+                  val gh = (h + cs - 1) / cs
+                  val cnt = IntArray(gw * gh)
+                  var y = 0
+                  while (y < h) {
+                      if (y.toFloat() / h <= 0.82f) {
+                          val row = y * w
+                          var x = 0
+                          while (x < w) {
+                              val c = px[row + x]
+                              if (((c shr 16) and 255) >= 150) {
+                                  val g = (c shr 8) and 255
+                                  val b = c and 255
+                                  if (g <= 85 && b <= 85 && !blocked(x, y, w, h, pr)) {
+                                      cnt[(y / cs) * gw + x / cs]++
+                                  }
+                              }
+                              x += 2
+                          }
+                      }
+                      y += 2
+                  }
+
+                  // 2) hücreleri birleştirip etiket kutularını bul
+                  val seen = BooleanArray(gw * gh)
+                  val stack = IntArray(gw * gh)
+                  val mobs = ArrayList<Mob>()
+                  var ocrBudget = 6
+                  for (start in cnt.indices) {
+                      if (cnt[start] < 2 || seen[start]) continue
+                      var sp = 0
+                      stack[sp++] = start
+                      seen[start] = true
+                      var minX = gw
+                      var maxX = 0
+                      var minY = gh
+                      var maxY = 0
+                      var sum = 0
+                      while (sp > 0) {
+                          val cur = stack[--sp]
+                          val cx = cur % gw
+                          val cy = cur / gw
+                          if (cx < minX) minX = cx
+                          if (cx > maxX) maxX = cx
+                          if (cy < minY) minY = cy
+                          if (cy > maxY) maxY = cy
+                          sum += cnt[cur]
+                          for (dy in -1..1) {
+                              for (dx in -3..3) {
+                                  val nx = cx + dx
+                                  val ny = cy + dy
+                                  if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue
+                                  val ni = ny * gw + nx
+                                  if (!seen[ni] && cnt[ni] >= 2) {
+                                      seen[ni] = true
+                                      stack[sp++] = ni
+                                  }
+                              }
+                          }
+                      }
+                      val l = minX * cs
+                      val r = (maxX + 1) * cs
+                      val t = minY * cs
+                      val b = (maxY + 1) * cs
+                      val bw = r - l
+                      val bh = b - t
+                      if (bw < 36 || bh < 10 || bh > h * 0.06f || bw > w * 0.2f || sum < 25) continue
+
+                      val key = (bw / 4).toString() + "_" + (bh / 4) + "_" + (sum / 12)
+                      var name = ocrCache[key]
+                      if (name == null) {
+                          if (ocrBudget <= 0) continue
+                          ocrBudget--
+                          name = cleanName(ocr(labelBitmap(w, h, l, t, r, b)))
+                          if (name.length >= 3 && name.any { it.isLetter() }) {
+                              if (ocrCache.size > 300) ocrCache.clear()
+                              ocrCache[key] = name
+                          } else {
+                              name = "?"
+                          }
+                      }
+                      mobs.add(Mob(name, l.toFloat(), t.toFloat(), r.toFloat(), b.toFloat()))
+                  }
+
+                  // 3) sol üst buff ikon yuvaları
+                  val slots = ArrayList<IntArray?>()
+                  for (k in 0 until SLOTS) slots.add(slotTpl(w, h, k))
+                  return ScanOut(w, h, mobs, slots)
+              }
+
+              private fun cleanName(s: String): String =
+                  s.replace('\n', ' ').replace('|', ' ').replace('=', ' ')
+                      .replace(Regex("\\s+"), " ").trim()
+
+              /** Etiketi siyah-beyaz, 3x büyütülmüş bitmap'e çevirir (OCR doğruluğu için). */
+              private fun labelBitmap(w: Int, h: Int, l: Int, t: Int, r: Int, b: Int): Bitmap {
+                  val pad = 4
+                  val k = 3
+                  val x0 = max(0, l - pad)
+                  val y0 = max(0, t - pad)
+                  val x1 = minOf(w, r + pad)
+                  val y1 = minOf(h, b + pad)
+                  val cw = x1 - x0
+                  val ch = y1 - y0
+                  val ow = cw * k
+                  val oh = ch * k
+                  val out = IntArray(ow * oh)
+                  val black = 0xFF000000.toInt()
+                  val white = 0xFFFFFFFF.toInt()
+                  for (yy in 0 until oh) {
+                      val sy = y0 + yy / k
+                      for (xx in 0 until ow) {
+                          val c = px[sy * w + x0 + xx / k]
+                          val rr = (c shr 16) and 255
+                          val gg = (c shr 8) and 255
+                          val bb = c and 255
+                          out[yy * ow + xx] = if (rr >= 110 && rr > gg * 2 && rr > bb * 2) black else white
+                      }
+                  }
+                  return Bitmap.createBitmap(out, ow, oh, Bitmap.Config.ARGB_8888)
+              }
+
+              private fun ocr(bmp: Bitmap): String {
+                  val latch = CountDownLatch(1)
+                  var text = ""
+                  try {
+                      recognizer.process(InputImage.fromBitmap(bmp, 0))
+                          .addOnSuccessListener {
+                              text = it.text
+                              latch.countDown()
+                          }
+                          .addOnFailureListener { latch.countDown() }
+                      latch.await(1500, TimeUnit.MILLISECONDS)
+                  } catch (e: Throwable) {
+                  }
+                  bmp.recycle()
+                  return text
+              }
+
+              private fun slotTpl(w: Int, h: Int, k: Int): IntArray? {
+                  val half = max(6, (0.0148f * h).toInt())
+                  val cx = ((0.0575f + 0.0203f * k) * w).toInt()
+                  val cy = (0.1583f * h).toInt()
+                  val s = half * 2
+                  val x0 = cx - half
+                  val y0 = cy - half
+                  if (x0 < 0 || y0 < 0 || x0 + s > w || y0 + s > h) return null
+
+                  var sum = 0.0
+                  var sum2 = 0.0
+                  var n = 0
+                  var yy = 0
+                  while (yy < s) {
+                      var xx = 0
+                      while (xx < s) {
+                          val c = px[(y0 + yy) * w + x0 + xx]
+                          val lum = (((c shr 16) and 255) * 3 + ((c shr 8) and 255) * 6 + (c and 255)) / 10.0
+                          sum += lum
+                          sum2 += lum * lum
+                          n++
+                          xx += 2
+                      }
+                      yy += 2
+                  }
+                  val mean = sum / n
+                  val sd = sqrt(max(0.0, sum2 / n - mean * mean))
+                  if (sd < 22.0) return null   // boş yuva
+
+                  val out = IntArray(TS * TS)
+                  for (ty in 0 until TS) {
+                      for (tx in 0 until TS) {
+                          val ax = tx * s / TS
+                          val bx = max(ax + 1, (tx + 1) * s / TS)
+                          val ay = ty * s / TS
+                          val by = max(ay + 1, (ty + 1) * s / TS)
+                          var rs = 0
+                          var gs = 0
+                          var bs = 0
+                          var c2 = 0
+                          for (iy in ay until by) {
+                              for (ix in ax until bx) {
+                                  val c = px[(y0 + iy) * w + x0 + ix]
+                                  rs += (c shr 16) and 255
+                                  gs += (c shr 8) and 255
+                                  bs += c and 255
+                                  c2++
+                              }
+                          }
+                          out[ty * TS + tx] = (0xFF shl 24) or ((rs / c2) shl 16) or ((gs / c2) shl 8) or (bs / c2)
+                      }
+                  }
+                  return out
+              }
+
+              private fun diff(a: IntArray, b: IntArray): Double {
+                  var s = 0
+                  for (i in a.indices) {
+                      val x = a[i]
+                      val y = b[i]
+                      s += abs(((x shr 16) and 255) - ((y shr 16) and 255)) +
+                          abs(((x shr 8) and 255) - ((y shr 8) and 255)) +
+                          abs((x and 255) - (y and 255))
+                  }
+                  return s / (a.size * 3.0)
+              }
+
+              private fun lev(a: String, b: String): Int {
+                  val dp = IntArray(b.length + 1) { it }
+                  for (i in 1..a.length) {
+                      var prev = dp[0]
+                      dp[0] = i
+                      for (j in 1..b.length) {
+                          val tmp = dp[j]
+                          dp[j] = minOf(dp[j] + 1, dp[j - 1] + 1, prev + (if (a[i - 1] == b[j - 1]) 0 else 1))
+                          prev = tmp
+                      }
+                  }
+                  return dp[b.length]
+              }
+
+              /** OCR hatalarına karşı benzer isimleri aynı canavar say. */
+              private fun canon(raw: String): String {
+                  val key = raw.lowercase(tr)
+                  for (k in known.keys) {
+                      if (lev(k.lowercase(tr), key) <= max(1, k.length / 8)) return k
+                  }
+                  known[raw] = false
+                  saveMobs()
+                  return raw
+              }
+
+              // ------------------------------------------------------------------ tarama sonucu
+
+              private fun onScan(o: ScanOut?) {
+                  if (o == null) {
+                      failCount++
+                      if (failCount >= 3 && running) setStatus("Ekran alınamadı")
+                      return
+                  }
+                  failCount = 0
+                  lastScanOk = SystemClock.uptimeMillis()
+                  scrW = o.w
+                  scrH = o.h
+
+                  for (m in o.mobs) {
+                      m.name = canon(m.name)
+                      m.sel = allMobs || known[m.name] == true
+                  }
+                  visible = o.mobs
+                  markCur()
+
+                  // buff takibi
+                  val tracked = buffs.filter { it.tpl != null }
+                  if (tracked.isNotEmpty()) {
+                      val found = BooleanArray(tracked.size)
+                      for (s in o.slots) {
+                          if (s == null) continue
+                          var best = -1
+                          var bd = 1e9
+                          for (i in tracked.indices) {
+                              val d = diff(s, tracked[i].tpl!!)
+                              if (d < bd) {
+                                  bd = d
+                                  best = i
+                              }
+                          }
+                          if (best >= 0 && bd < 28.0) found[best] = true
+                      }
+                      for (i in tracked.indices) {
+                          val b = tracked[i]
+                          if (found[i]) {
+                              b.misses = 0
+                              b.present = true
+                          } else {
+                              b.misses++
+                              if (b.misses >= 2) b.present = false
+                          }
+                      }
+                  }
+
+                  // ikon seçme modu
+                  val pf = pickFor
+                  if (pf != null) showPick(pf, o.slots)
+
+                  // ESP çizimi
+                  if (espOn) {
+                      esp.sw = o.w
+                      esp.sh = o.h
+                      esp.mobs = visible
+                      esp.invalidate()
+                  }
+
+                  // canavar listesi değiştiyse yenile
+                  val sig = known.keys.joinToString("|") + "#" + visible.groupingBy { it.name }.eachCount().toString()
+                  if (sig != lastSig) {
+                      lastSig = sig
+                      refreshMobs()
+                  }
+              }
+
+              private fun d2(ax: Float, ay: Float, bx: Float, by: Float): Float {
+                  val dx = ax - bx
+                  val dy = ay - by
+                  return dx * dx + dy * dy
+              }
+
+              private fun markCur() {
+                  for (m in visible) m.cur = false
+                  val t = target ?: return
+                  val best = visible.minByOrNull { d2(it.cx, it.cy, t.cx, t.cy) } ?: return
+                  val lim = 0.1f * scrH
+                  if (d2(best.cx, best.cy, t.cx, t.cy) < lim * lim) {
+                      best.cur = true
+                      target = best
+                  }
+              }
+
+              // ------------------------------------------------------------------ oto av döngüsü
+
+              private fun tapPx(x: Float, y: Float) {
+                  val jx = x + (rnd.nextInt(11) - 5)
+                  val jy = y + (rnd.nextInt(11) - 5)
+                  val p = Path().apply { moveTo(jx, jy) }
+                  val g = GestureDescription.Builder()
+                      .addStroke(GestureDescription.StrokeDescription(p, 0, (55 + rnd.nextInt(30)).toLong()))
+                      .build()
+                  dispatchGesture(g, null, null)
+              }
+
+              private val huntLoop = object : Runnable {
+                  override fun run() {
+                      if (!running || !built) return
+                      val now = SystemClock.uptimeMillis()
+                      val fresh = now - lastScanOk < 3000
+                      var delay: Long
+                      var acted = false
+                      delay = 400L
+
+                      // 1) buff düştüyse yeniden bas (öncelik)
+                      if (fresh) {
+                          for (b in buffs) {
+                              if (b.enabled && b.tpl != null && !b.present && now - b.lastPress > 6000) {
+                                  tapPx(SKILL_X[b.key] * scrW, SKILL_Y[b.key] * scrH)
+                                  b.lastPress = now
+                                  setStatus(b.title + " basıldı (" + ROMAN[b.key] + ")")
+                                  delay = 1400L
+                                  acted = true
+                                  break
+                              }
+                          }
+                      }
+                      // 2) canavara saldır
+                      if (!acted) delay = huntStep(now)
+                      ui.postDelayed(this, delay)
+                  }
+              }
+
+              private fun huntStep(now: Long): Long {
+                  if (now - lastScanOk > 3000) {
+                      setStatus("Ekran okunamıyor…")
+                      return 800L
+                  }
+                  val cand = visible.filter { it.sel }
+                  if (cand.isEmpty()) {
+                      target = null
+                      setStatus(if (!allMobs && known.values.none { it }) "Listeden canavar seç" else "Canavar aranıyor…")
+                      return 600L
+                  }
+                  val old = target
+                  var t: Mob? = null
+                  if (old != null) {
+                      val c = cand.minByOrNull { d2(it.cx, it.cy, old.cx, old.cy) }
+                      val lim = 0.12f * scrH
+                      if (c != null && d2(c.cx, c.cy, old.cx, old.cy) < lim * lim) t = c
+                  }
+                  if (t == null) t = cand.minByOrNull { d2(it.cx, it.cy, scrW * 0.52f, scrH * 0.55f) }
+                  val tt = t ?: return 600L
+
+                  val lim2 = 0.08f * scrH
+                  val isNew = old == null || d2(tt.cx, tt.cy, old.cx, old.cy) > lim2 * lim2
+                  target = tt
+                  markCur()
+                  setStatus("Hedef: " + tt.name + "  (" + cand.size + ")")
+
+                  if (isNew || now - lastSelect > 2500L) {
+                      lastSelect = now
+                      tapPx(tt.cx, tt.cy + OFF_VALUES[offIdx] * scrH)
+                      return 500L
+                  }
+                  tapPx(ATK_X * scrW, ATK_Y * scrH)
+                  return 380L + rnd.nextInt(200)
+              }
+          }
+          EOF
+
+      - name: APK derle
+        working-directory: proj
+        run: gradle assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oto-av-apk
+          path: proj/app/build/outputs/apk/debug/app-debug.apk
