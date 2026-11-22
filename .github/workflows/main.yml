@@ -1,0 +1,472 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: SDK lisanslarini kabul et
+        run: yes | sdkmanager --licenses || true
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Proje dosyalarini olustur
+        run: |
+          mkdir -p proj/app/src/main/java/com/benim/tiklayici
+          mkdir -p proj/app/src/main/res/xml proj/app/src/main/res/values
+
+          cat > proj/settings.gradle <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "Tiklayici"
+          include ':app'
+          EOF
+
+          cat > proj/gradle.properties <<'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx3g
+          EOF
+
+          cat > proj/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+          }
+          EOF
+
+          cat > proj/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.benim.tiklayici'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.benim.tiklayici'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 2
+                  versionName '2.0'
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = '17' }
+          }
+          dependencies {
+              implementation 'com.google.mlkit:text-recognition:16.0.1'
+          }
+          EOF
+
+          cat > proj/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:label="@string/app_name"
+                  android:theme="@android:style/Theme.Material.Light">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+                  <service
+                      android:name=".ClickService"
+                      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+                      android:exported="false">
+                      <intent-filter>
+                          <action android:name="android.accessibilityservice.AccessibilityService"/>
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.accessibilityservice"
+                          android:resource="@xml/accessibility_config"/>
+                  </service>
+              </application>
+          </manifest>
+          EOF
+
+          cat > proj/app/src/main/res/values/strings.xml <<'EOF'
+          <resources>
+              <string name="app_name">Tiklayici</string>
+              <string name="aciklama">Oyun icin oto tiklayici</string>
+          </resources>
+          EOF
+
+          cat > proj/app/src/main/res/xml/accessibility_config.xml <<'EOF'
+          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+              android:canPerformGestures="true"
+              android:canTakeScreenshot="true"
+              android:accessibilityEventTypes="typeAllMask"
+              android:accessibilityFeedbackType="feedbackGeneric"
+              android:description="@string/aciklama" />
+          EOF
+
+          cat > proj/app/src/main/java/com/benim/tiklayici/MainActivity.kt <<'EOF'
+          package com.benim.tiklayici
+
+          import android.app.Activity
+          import android.content.Intent
+          import android.os.Bundle
+          import android.provider.Settings
+          import android.widget.Button
+          import android.widget.EditText
+          import android.widget.LinearLayout
+          import android.widget.TextView
+          import android.widget.Toast
+
+          class MainActivity : Activity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  val prefs = getSharedPreferences("ayar", MODE_PRIVATE)
+                  val layout = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(48, 96, 48, 48)
+                  }
+                  layout.addView(TextView(this).apply {
+                      text = "1) Aşağıya kesilecek canavar isimlerini yaz (virgülle ayır) ve Kaydet'e bas\n2) Erişilebilirlik ayarlarından Tiklayici servisini etkinleştir\n3) Oyunu aç; panelde ☰ ile 'İsimle farm' ve tuşları seç, ▶ ile başlat"
+                      textSize = 16f
+                  })
+                  val edit = EditText(this).apply {
+                      hint = "Örn: Beyaz Yeminli Asker, Beyaz Yeminli Okçu"
+                      setText(prefs.getString("isimler", "Beyaz Yeminli Asker"))
+                  }
+                  layout.addView(edit)
+                  layout.addView(Button(this).apply {
+                      text = "Kaydet"
+                      setOnClickListener {
+                          prefs.edit().putString("isimler", edit.text.toString()).apply()
+                          Toast.makeText(this@MainActivity, "Kaydedildi", Toast.LENGTH_SHORT).show()
+                      }
+                  })
+                  layout.addView(Button(this).apply {
+                      text = "Erişilebilirlik Ayarları"
+                      setOnClickListener {
+                          startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                      }
+                  })
+                  setContentView(layout)
+              }
+          }
+          EOF
+
+          cat > proj/app/src/main/java/com/benim/tiklayici/ClickService.kt <<'EOF'
+          package com.benim.tiklayici
+
+          import android.accessibilityservice.AccessibilityService
+          import android.accessibilityservice.AccessibilityService.ScreenshotResult
+          import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
+          import android.accessibilityservice.GestureDescription
+          import android.content.SharedPreferences
+          import android.graphics.Bitmap
+          import android.graphics.Color
+          import android.graphics.Path
+          import android.graphics.PixelFormat
+          import android.graphics.Rect
+          import android.os.Build
+          import android.os.Handler
+          import android.os.Looper
+          import android.util.DisplayMetrics
+          import android.view.Display
+          import android.view.Gravity
+          import android.view.MotionEvent
+          import android.view.View
+          import android.view.WindowManager
+          import android.view.accessibility.AccessibilityEvent
+          import android.widget.Button
+          import android.widget.CheckBox
+          import android.widget.LinearLayout
+          import android.widget.TextView
+          import com.google.mlkit.vision.common.InputImage
+          import com.google.mlkit.vision.text.Text
+          import com.google.mlkit.vision.text.TextRecognition
+          import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+          import java.util.concurrent.Executor
+
+          class ClickService : AccessibilityService() {
+
+              private class Act(val name: String, val x: Float, val y: Float, val def: Boolean)
+
+              // Konumlar ekran görüntüsünden oran olarak alındı (x, y)
+              private val acts = listOf(
+                  Act("Hedef seç", 0.953f, 0.580f, true),
+                  Act("Saldırı", 0.862f, 0.693f, true),
+                  Act("Beceri I", 0.727f, 0.560f, true),
+                  Act("Beceri II", 0.715f, 0.648f, true),
+                  Act("Beceri III", 0.715f, 0.741f, false),
+                  Act("Beceri IV", 0.727f, 0.826f, false),
+                  Act("Eşya topla", 0.953f, 0.811f, true),
+                  Act("Kırmızı iksir", 0.915f, 0.479f, false),
+                  Act("Mavi iksir", 0.862f, 0.460f, false)
+              )
+
+              private val speeds = listOf("Yavaş" to (800..1200), "Normal" to (400..700), "Hızlı" to (200..350))
+
+              private val handler = Handler(Looper.getMainLooper())
+              private val exec = Executor { r -> handler.post(r) }
+              private val enabled = BooleanArray(acts.size)
+              private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+              private lateinit var prefs: SharedPreferences
+              var running = false
+              private var i = 0
+              private var speedIdx = 1
+              private var farmOn = false
+              private var attackTicks = 0
+              private var busy = false
+              private var wm: WindowManager? = null
+              private var panel: View? = null
+              private var startBtn: Button? = null
+
+              private fun norm(s: String): String {
+                  return s.lowercase()
+                      .replace('ı', 'i').replace('ş', 's').replace('ç', 'c')
+                      .replace('ğ', 'g').replace('ö', 'o').replace('ü', 'u')
+                      .filter { it.isLetter() }
+              }
+
+              private fun tapPx(x: Float, y: Float) {
+                  val path = Path().apply { moveTo(x, y) }
+                  val g = GestureDescription.Builder()
+                      .addStroke(GestureDescription.StrokeDescription(path, 0, 60))
+                      .build()
+                  dispatchGesture(g, null, null)
+              }
+
+              private fun tap(a: Act) {
+                  val m = DisplayMetrics()
+                  @Suppress("DEPRECATION")
+                  wm?.defaultDisplay?.getRealMetrics(m)
+                  tapPx(a.x * m.widthPixels, a.y * m.heightPixels)
+              }
+
+              // Ekrandaki yazılardan istenen isimlerden birini bul, en yakın olana dokun
+              private fun found(t: Text, w: Int, h: Int) {
+                  val wanted = (prefs.getString("isimler", "Beyaz Yeminli Asker") ?: "")
+                      .split(",").map { norm(it) }.filter { it.isNotEmpty() }
+                  var best: Rect? = null
+                  var bestD = Float.MAX_VALUE
+                  for (b in t.textBlocks) {
+                      for (l in b.lines) {
+                          val box = l.boundingBox ?: continue
+                          val cx = box.centerX().toFloat()
+                          val cy = box.centerY().toFloat()
+                          if (cy < h * 0.12f) continue
+                          if (cy > h * 0.80f && cx < w * 0.75f) continue
+                          if (cx > w * 0.68f && cy > h * 0.38f) continue
+                          val n = norm(l.text)
+                          if (wanted.none { n.contains(it) }) continue
+                          val dx = cx - w * 0.525f
+                          val dy = cy - h * 0.48f
+                          val d = dx * dx + dy * dy
+                          if (d < bestD) {
+                              bestD = d
+                              best = box
+                          }
+                      }
+                  }
+                  val bx = best
+                  if (bx != null) {
+                      tapPx(bx.centerX().toFloat(), bx.bottom + h * 0.05f)
+                      attackTicks = 8
+                  } else if (enabled[6]) {
+                      tap(acts[6])
+                  }
+              }
+
+              private fun farmStep() {
+                  if (attackTicks > 0) {
+                      attackTicks--
+                      val on = acts.indices.filter { enabled[it] && it != 0 }
+                      if (on.isNotEmpty()) tap(acts[on[i++ % on.size]])
+                      return
+                  }
+                  if (busy) return
+                  busy = true
+                  takeScreenshot(Display.DEFAULT_DISPLAY, exec, object : TakeScreenshotCallback {
+                      override fun onSuccess(r: ScreenshotResult) {
+                          val hb = r.hardwareBuffer
+                          val bmp = Bitmap.wrapHardwareBuffer(hb, r.colorSpace)
+                              ?.copy(Bitmap.Config.ARGB_8888, false)
+                          hb.close()
+                          if (bmp == null) {
+                              busy = false
+                              return
+                          }
+                          recognizer.process(InputImage.fromBitmap(bmp, 0))
+                              .addOnSuccessListener { t ->
+                                  found(t, bmp.width, bmp.height)
+                                  busy = false
+                              }
+                              .addOnFailureListener { busy = false }
+                      }
+
+                      override fun onFailure(code: Int) {
+                          busy = false
+                      }
+                  })
+              }
+
+              private val loop = object : Runnable {
+                  override fun run() {
+                      if (!running) return
+                      if (farmOn && Build.VERSION.SDK_INT >= 30) {
+                          farmStep()
+                      } else {
+                          val on = acts.indices.filter { enabled[it] }
+                          if (on.isNotEmpty()) tap(acts[on[i++ % on.size]])
+                      }
+                      handler.postDelayed(this, speeds[speedIdx].second.random().toLong())
+                  }
+              }
+
+              fun toggle() {
+                  running = !running
+                  attackTicks = 0
+                  startBtn?.text = if (running) "■" else "▶"
+                  if (running) handler.post(loop)
+              }
+
+              override fun onServiceConnected() {
+                  prefs = getSharedPreferences("ayar", MODE_PRIVATE)
+                  for (k in acts.indices) enabled[k] = prefs.getBoolean("a$k", acts[k].def)
+                  speedIdx = prefs.getInt("hiz", 1)
+                  farmOn = prefs.getBoolean("farm", false)
+
+                  val w = getSystemService(WINDOW_SERVICE) as WindowManager
+                  wm = w
+                  val d = resources.displayMetrics.density
+                  fun dp(v: Int) = (v * d).toInt()
+
+                  val box = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setBackgroundColor(0xCC202020.toInt())
+                      setPadding(dp(6), dp(6), dp(6), dp(6))
+                  }
+                  val header = LinearLayout(this).apply {
+                      orientation = LinearLayout.HORIZONTAL
+                      gravity = Gravity.CENTER_VERTICAL
+                  }
+                  val handle = TextView(this).apply {
+                      text = "✥"
+                      textSize = 24f
+                      setTextColor(Color.WHITE)
+                      setPadding(dp(6), 0, dp(10), 0)
+                  }
+                  val sBtn = Button(this).apply { text = "▶" }
+                  startBtn = sBtn
+                  sBtn.setOnClickListener { toggle() }
+                  val menuBtn = Button(this).apply { text = "☰" }
+
+                  header.addView(handle)
+                  header.addView(sBtn, LinearLayout.LayoutParams(dp(56), dp(48)))
+                  header.addView(menuBtn, LinearLayout.LayoutParams(dp(56), dp(48)))
+                  box.addView(header)
+
+                  val list = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      visibility = View.GONE
+                  }
+                  list.addView(CheckBox(this).apply {
+                      text = "İsimle farm (Android 11+)"
+                      setTextColor(Color.YELLOW)
+                      isChecked = farmOn
+                      setOnCheckedChangeListener { _, c ->
+                          farmOn = c
+                          attackTicks = 0
+                          prefs.edit().putBoolean("farm", c).apply()
+                      }
+                  })
+                  for (k in acts.indices) {
+                      list.addView(CheckBox(this).apply {
+                          text = acts[k].name
+                          setTextColor(Color.WHITE)
+                          isChecked = enabled[k]
+                          setOnCheckedChangeListener { _, c ->
+                              enabled[k] = c
+                              prefs.edit().putBoolean("a$k", c).apply()
+                          }
+                      })
+                  }
+                  val speedBtn = Button(this).apply { text = "Hız: " + speeds[speedIdx].first }
+                  speedBtn.setOnClickListener {
+                      speedIdx = (speedIdx + 1) % speeds.size
+                      speedBtn.text = "Hız: " + speeds[speedIdx].first
+                      prefs.edit().putInt("hiz", speedIdx).apply()
+                  }
+                  list.addView(speedBtn)
+                  box.addView(list)
+
+                  menuBtn.setOnClickListener {
+                      list.visibility = if (list.visibility == View.GONE) View.VISIBLE else View.GONE
+                  }
+
+                  val lp = WindowManager.LayoutParams(
+                      WindowManager.LayoutParams.WRAP_CONTENT,
+                      WindowManager.LayoutParams.WRAP_CONTENT,
+                      WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                      PixelFormat.TRANSLUCENT
+                  ).apply {
+                      gravity = Gravity.TOP or Gravity.START
+                      x = dp(60)
+                      y = dp(80)
+                  }
+
+                  var sx = 0f
+                  var sy = 0f
+                  var ox = 0
+                  var oy = 0
+                  handle.setOnTouchListener { _, e ->
+                      if (e.action == MotionEvent.ACTION_DOWN) {
+                          sx = e.rawX; sy = e.rawY; ox = lp.x; oy = lp.y
+                      } else if (e.action == MotionEvent.ACTION_MOVE) {
+                          lp.x = ox + (e.rawX - sx).toInt()
+                          lp.y = oy + (e.rawY - sy).toInt()
+                          w.updateViewLayout(box, lp)
+                      }
+                      true
+                  }
+
+                  w.addView(box, lp)
+                  panel = box
+              }
+
+              override fun onAccessibilityEvent(e: AccessibilityEvent?) {}
+
+              override fun onInterrupt() {
+                  running = false
+                  startBtn?.text = "▶"
+              }
+
+              override fun onDestroy() {
+                  running = false
+                  panel?.let { wm?.removeView(it) }
+                  super.onDestroy()
+              }
+          }
+          EOF
+
+      - name: APK derle
+        working-directory: proj
+        run: gradle assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tiklayici-apk
+          path: proj/app/build/outputs/apk/debug/app-debug.apk
