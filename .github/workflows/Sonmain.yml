@@ -1,0 +1,2204 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: SDK lisanslarini kabul et
+        run: yes | sdkmanager --licenses || true
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Proje dosyalarini olustur
+        run: |
+          mkdir -p proj/app/src/main/java/com/benim/tiklayici
+          mkdir -p proj/app/src/main/res/xml proj/app/src/main/res/values proj/app/src/main/res/drawable
+
+          cat > proj/settings.gradle <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "Tiklayici"
+          include ':app'
+          EOF
+
+          cat > proj/gradle.properties <<'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx3g
+          EOF
+
+          base64 -d > proj/app/debug.keystore <<'EOF'
+          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
+          EOF
+
+          cat > proj/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+          }
+          EOF
+
+          cat > proj/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.benim.tiklayici'
+              compileSdk 34
+              signingConfigs {
+                  debug {
+                      storeFile file('debug.keystore')
+                      storePassword 'android'
+                      keyAlias 'androiddebugkey'
+                      keyPassword 'android'
+                  }
+              }
+              defaultConfig {
+                  applicationId 'com.benim.tiklayici'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 7
+                  versionName '7.0'
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = '17' }
+          }
+          EOF
+
+          cat > proj/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <queries>
+                  <intent>
+                      <action android:name="android.intent.action.MAIN"/>
+                      <category android:name="android.intent.category.LAUNCHER"/>
+                  </intent>
+              </queries>
+              <application
+                  android:icon="@drawable/ic_logo"
+                  android:label="@string/app_name"
+                  android:theme="@android:style/Theme.Material.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+                  <service
+                      android:name=".ClickService"
+                      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+                      android:exported="false">
+                      <intent-filter>
+                          <action android:name="android.accessibilityservice.AccessibilityService"/>
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.accessibilityservice"
+                          android:resource="@xml/accessibility_config"/>
+                  </service>
+              </application>
+          </manifest>
+          EOF
+
+          cat > proj/app/src/main/res/values/strings.xml <<'EOF'
+          <resources>
+              <string name="app_name">Oto Av</string>
+              <string name="aciklama">Oto Av: Hava Kılıcı ve Öfke becerilerini bitince hemen yeniler, Nişan pasif olunca açar, eşya toplar</string>
+          </resources>
+          EOF
+
+          cat > proj/app/src/main/res/xml/accessibility_config.xml <<'EOF'
+          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+              android:canPerformGestures="true"
+              android:canTakeScreenshot="true"
+              android:canRetrieveWindowContent="true"
+              android:accessibilityFlags="flagRetrieveInteractiveWindows"
+              android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged"
+              android:accessibilityFeedbackType="feedbackGeneric"
+              android:description="@string/aciklama" />
+          EOF
+
+          base64 -d > proj/app/src/main/res/drawable/ic_logo.png <<'EOF'
+          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
+          wZxVjRCjkqnXT1W/re0uW7uldf9CHYK062rjRIfG2/cuLNRBpHjoSL/XivfNp1y024HrZto7j9QP
+          HF5JQK3QILSCLkS9KkO8Wqg+kjjimgN9XciBaoGoQKVpPVVcN0/ENz59y0VTg/NPnt0zl25/IF7b
+          kz+8+vYx0XFlUYSNE+2Qbaal69ucaGH9WNgy1p4aa21YP7Vz+951pZ61bWJdW7sDXPfQ4gEdv3++
+          TlSp+sV4cd+hpfsXkT0cNxtaWgdzxGJuIDsXBhUdRNAIaQbDCJSZPnSg4WIa+HAN4poDfZOgBYro
+          AJEDYAppd8rEKr3hsnOnNP/jLdu395ICIi2Dg/n/MC7QiiFni8Dmdpwda/VzWqnzulYx2yq2dCSb
+          76vlvsVqQHeiNquPlpra8IoIJRodNoMmoCn6jmIZQzKQjPY0rtk3Jxiugqnx9ghslJHqtGJ1sYsM
+          +2jDh2J1jOnrWsV0dF/VN2VHYM3+jda0dVWFgmyjFZxHW71f9XPnyC2OolXysG89LqJGWPOAb0SB
+          NtTf9aObgf/txc/aYfOteJY9fDOgPjarINeOsCeGL42e+7fCG15Dor+xN+EjXDSvOdC3TCD/VvGh
+          tST6kbC1PHjN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN
+          1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN1mzN8P8BI8WR
+          qDMSAYgAAAAASUVORK5CYII=
+          EOF
+
+          cat > proj/app/src/main/java/com/benim/tiklayici/Cfg.kt <<'EOF'
+          package com.benim.tiklayici
+
+          object Cfg {
+              // Buff ikon şablonu boyutu (yarım ölçek)
+              const val TW = 21
+              const val TH = 20
+              // Nişan ikon şablonu boyutu (çeyrek ölçek)
+              const val NT = 29
+
+              // Buff ikonu bu skordan küçükse "var" sayılır
+              const val BTH = 22f
+
+              // Ekran oranları (x, y) - yatay oyun ekranı (2400x1080 görüntüden ölçüldü)
+              const val NX = 0.953f   // Nişan düğmesi
+              const val NY = 0.579f
+              const val HX = 0.954f   // el (eşya topla) düğmesi
+              const val HY = 0.811f
+
+              // ---------- KARAKTER BÖLÜMLERİ ----------
+              // 0 = Savaşçı, 1 = Karakter 2 (Sura). Menüden hangisi seçilirse o aktif olur.
+              val PNAME = arrayOf("Savaşçı", "Karakter 2")
+
+              val SNAME = arrayOf(
+                  arrayOf("Hava Kılıcı", "Öfke", "Buds"),
+                  arrayOf("Büyülü Keskinlik", "Büyülü Zırh", "Büyü Çözme", "Parmak Darbesi", "Ejderha Dönüşü", "Dehşet")
+              )
+              val SSHORT = arrayOf(
+                  arrayOf("Hava", "Öfke", "Buds"),
+                  arrayOf("Keskin", "Zırh", "Çözme", "Parmak", "Ejderha", "Dehşet")
+              )
+              // Beceri yuvası konumları (ekran oranı). -1 = menüden "Yuva ayarla" ile belirlenir
+              val SX = arrayOf(
+                  floatArrayOf(0.772f, 0.810f, -1f),
+                  floatArrayOf(0.757f, 0.772f, -1f, -1f, -1f, -1f)
+              )
+              val SY = arrayOf(
+                  floatArrayOf(0.806f, 0.896f, -1f),
+                  floatArrayOf(0.693f, 0.806f, -1f, -1f, -1f, -1f)
+              )
+              // true = yuva sabit (menüden değiştirilemez)
+              val SFIXED = arrayOf(
+                  booleanArrayOf(true, true, false),
+                  booleanArrayOf(false, false, false, false, false, false)
+              )
+              // İlk açılışta hangi beceriler açık
+              val SON = arrayOf(
+                  booleanArrayOf(true, true, true),
+                  booleanArrayOf(true, true, false, false, false, false)
+              )
+              // İkon bulunamazsa (veya hiç yoksa) yenileme süresi (sn)
+              val SSEC = arrayOf(
+                  intArrayOf(60, 60, 60),
+                  intArrayOf(60, 60, 30, 8, 8, 20)
+              )
+              // Varsayılan buff ikonu şablonu (sol üst takip). Wiki'den alınanlar biraz daha gevşek eşikle aranır.
+              val STPL: Array<Array<String?>> get() = arrayOf<Array<String?>>(
+                  arrayOf(T_HAVA, T_OFKE, null),
+                  arrayOf(T_KESK, T_ZIRH, T_COZME, T_PARMAK, T_EJDER, T_DEHSET)
+              )
+              val STHR = arrayOf(
+                  floatArrayOf(22f, 22f, 22f),
+                  floatArrayOf(25f, 25f, 25f, 25f, 25f, 25f)
+              )
+
+              // Beceri ikonları (menüde ve yüzen pencerede gösterilir)
+              const val IC_HAVA = "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"
+              const val IC_OFKE = "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"
+              const val IC_BUDS = "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"
+              const val IC_KESK = "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"
+              const val IC_ZIRH = "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"
+              const val IC_COZME = "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"
+              const val IC_PARMAK = "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"
+              const val IC_EJDER = "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"
+              const val IC_DEHSET = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAALWUlEQVR42kWXSZCd1XXHf3f4pve99/q9HqTu1qyWiNCEMGAhprLLAxCCAVtQRapC2atsk0VCZSWzdBZZpByXFyRUhZTBUsCRMSZ2KnEZhCwTZLUmC40tqaWeX/frN3/DvTeL15Dtrbr3nHvPub///wiAI0eOyNdee81euHDEP/3B3PHTZy49deb8ZZvnRqZZiu9pur0U50AIwAGAFOAFEoGl18sxxpFllsDTKClwAsLARwlp9+7eKg8+tO/kw4/vfurex15tvvjii+rYsWNG/H/wo/75//7oJ2fPffadD09O2oFKWUoJ4BDOIYQAAVoLpAMnJNYYOkmHwXIBKSUrjTa+9lFC9rMUgiiKaDR6zC/V7BOH9sv779/3X1u2bfnOY8+/2nRHjkgB4C4c9d/81W+PTp6/9NxHJ8+YrRvH1PjYOqQ0+NohsTgECEcQesi1w621GJMSFwKMs8zNLVMqFPB9BdaBlJTiCnMLTa5MzTAzu2QeP/SQevCBfb/Zsn38uceef7WpnLsS/Nub//qT8xeuvvDRydP5prGK3ri+jHBdtEqRJGR5lzTtUCr6pMaS5pbUGKywxKUCKIlFopRHr9vAmpQ0aeN7kiTp0el1qZZD/EDKyYvXcincRBSIh9794V8fV+XOzfevXb/97IlTZ83WjYN6YlMFRRfPy4lDQRwpcptiyDHWggpAeyjtYYDZ+VkazSaFYomVeo0s6RAFikLko5Sg2+niKxAiZ8vGYeJiQX4yedng7I7z16a+Ir73zB535cas3TA2LLdvqiJcC88H5xzOGoIgIMsMvczSTAx+WObGzWmyLEeQ00vaKOUYGhqk2+0yWq0yVC0igCRJ8ZSHFArfV2jPw4iQG7frXL4+YzePD0l9e3bZKq3lromNSBIaTUPuIAwkxkCznaw9u+Pu3AqFOOXPnn6SKPIBQVwsorVmtVHn/fd/Tr3eQglFGHoY4wh8jzw3iNzS7rSR2rJl4wjXbs3Lu/OrVgeBlsbkJCYlT7skuUWY/u2r1QqdXHL9ynVKA1VeevkVClGRxx89SBxHZMaR5SCcIkm7jI1vY7Ve5733fsFqvYOvNYicONB0OgmFgkdU8HDCEWiJFFJqqQRZbmh2uiiR4gcSYwzGQZo5pmcX0EHMC4f/nIMPP0rgRSwv16m3WqS54drNW6RJhqc9xkY3U6qO8ewLJY69c4yZ2iJKldHSUCz6rB+KsShqqz1cnuFHIRpACIEQAqUkWkgkFt/3uTM/j8Xn5b94hX333c/NW7cpRGUWFlfIjSG3lsWlOllmQQqm787QXl3iS/cf4PC3D/PL93+OSepEUUgUyD7ErKPV6tFLcgoFgcatYQ2BMQ4pDVoremlOo9VlYtc9PPGVr3H+3FlM7listbk1PUeWZuTG0Gy317ZLlHBIa5mcnOTll1/mzB8+YWZqEV8LfE/R6WYgPKSUa0gFLYVDCrDWoqTDUx69JKWXGrQuIFSEEo6dE1up1RpMnb5IGATsnNiGEDB57o9M35kjy3OkgELoERd8bkzdYf/++zC9RZrtOsWoTJpbjO0n7pwEB1IgkDg85Rgox0gk3SQnzR1Zrlhp5nzwqw85c/YK16buYq2gXIrYPrGJdrtDq9ml0+7hK49iVCBNJauNlNvTczx88FHicoVGr838ch1rLVqBryW+1hhj0c45PE9TikOUNKTCYnKDpxWVgSLdTsqv/+cUn5w+z4axUb73ymGEFJydvMQP/+kNrt+eY7AywFPfeILllRXmF5ZRQnDfnt1kJqfZ7tBo9YiDgDgKcA7igib0Jc45JM4RhT6BH9Botgl9zdhIiQ0jAwyUIiqVImOjo1y4eJvPLt9kx44JpJBcvnyNTz+9wPTdRa5cm6JcLrO0uMKlS1eprzZJ84wgCFBK4ZwjDgOMyclyg+xLUL8HHJAkOZ1ugrWghKAyUKTdTVhcWGB48zAH9u7kL7/7bcoDJa5evU6zsUpuDK+8cphmN6FSKbFu/SDGpGwYr/In94yyfWKcyTOnqdeWqZZiPCXp9XK6mcNYR2YcoZZIB7S7CY1mD5s7VlabzNTqJNYipaXgw+Hnn+bH//h9vvylnXx84mNKpTKz8/N861tf4x/+/u94+puPcffuHTwf7t01ziOP7KW+Osfrr/+Y1aV5xoergCU3DmMFzXZGkqZIJdCOfhsKJ0BJnBPkqUEXPUrlAvWVGp/8/ndopTl14kN2TuwmSVI2b9rIe7/4NQ740Y/+hVa7w/79u9i3eytRGPDGP79Bp9Vg284xPOlwCDpJSqlYxhjX1xpAgsAhcDiUVoRhQJqk1OuraOUxfecOb731Nu1umwP37Udrj58eO061OoiQklO//wN5bti2bStDg4McfPjLvPvuz2i2Wuzbt4/ACxBAGGikkl/U3q3ZqrUVi3UWYS1YRxgE+NpndbWNMZa4GDM2Osqt27ep1VaoVgc5e+4i9UaLNMv6wuQs3U4T7RK0s2zdMEocaHpJSiexLDcSuj1LbixSgVIaa0FbLJ4nCUMPQYr2NAhQSmHp+zqHxQ981q0fRfhlgijm7twCQ4GHJxx7dt9DrbbM5g3ruDh5Gpe0iMKQvNcg9AW5teQpIDVJbtB+gOd7ZDlI58DzNFEUkGQZSZqBgyxLqRQDFGCtY2T9CGMbNnD23HnGxkeZmZkhDkNuTk1RLEQ89OAB1o2s4/jxD4iigMpACWcMQagJfI2Q4Hmyj+G+wQMEUkpBu5vQbHcJAh8lJb4vKRV8BsshUkKvm3DyxClqS3M886df5+THp9iyaTPTM7Ps2bePkfXDxIUCb7/97wS+T7VcxhoDCIQUlAeLeIGm20nIshznWJMghxS2/wN8L6AQhuQ2R0pHIdB9tkc+N25c5T9+9i7bJ3bga8X2bZsYrBbZtXMzlaKgFPscO/pTCoGkUooweQrOIYXD5oZus4OzBt9TxFGA53n4nsZTGrV3+/D3rXEMVav0ui2iwLFuuES712V+sYnWGiVhdm6Oq1ev8sjDD7Bn1zZ2bhtn145xkmaNY2+/RewrqiUPTRclDDiDVpBnKaVCgJYQ+h5RXMS6kPpKDyU8xHef2W/SzMq4EDI8IBkcyMEZcidYWGyg/QiLYHZxBSEVfuitDSWSLM1YrjVZv24dcRwiMJRjh8KRJv2n1gri0Cc3DoRitQNJ5rO01CTLjNW7d22TK6ttO3XzjhwdrjA8NMDV63dJspxqpUQ3s7TaCWPDA0gluTO3QG4tQjik0IyPjxL4Hs46hACTOZwzACgJ5Tgiyw1pZtcUNmBxqc7wUMVWK2Wp7929/Xcms4eMcWZm7q5KkxadrkDpkF4mabczlAzwfZ9Wp0u5NEia9rAuRwlNGHhIFIg+U3uJw/c9lOo769pqjlQaYwTtVkpttc7IumHzyKG9Ko4H/iiWrrxZvjh5/Z2V5c7XPz75aT43f1sXS0WCMEIK+blZ6jdksURloExtfoY8TxGiP4wgBKyhNUkznOizFcAZhXWCNOnRaDRYPzpuDh06oIaHS59u2T32rAC4dOL10sLszPFms/fVU6fPmls3plSpVCLPMyRgjSUII4ZHhmjVF8iS3hdI7VsaEKKvI0lmMM5+zluc0Cjl0W412bJ1q3nwgT1qoFKcrJTjJw88+TcLwrkjUojX7KUTPyjV5rJ35lea3/js8i27tLggl5bmEaZfTyEkWkkESZ9eCBACJyRgyLMMuyazSvsI2bdcDsXIyBjVSsXec89GOTo6+L++X3n20HN/NX/06ItKABw9+qJ66aVj5tKJH5TOTc78Z894jxTLgxZrpFYSIQXYvnf0Pf2FnAgEyg8wecb09E2SbhdjYGzDJoKogLWWLLeAsFc/OydGhqILBw/e+829X/3buc9j/h+gXadnyaQujQAAAABJRU5ErkJggg=="
+              const val IC_EL = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFHklEQVR42u3XW2wUZRQH8P+Zy+7Obre022232+u2tFR6kdJCK7S0aoAKRaLEhERMfCGCYjDgLT5INN4gmPhgCGJMGjFqBBElSjSAVyC1FGjA0tJC6bJtsWC3t92Z3Z2dOT5hNF5oS/vmeZxMvvzmnJP/lwH+rymUz506vnHlSrV+SW348OHDWmN1jSoQZZVnZaupdkdoxgH1NYvVoWhELfL5tM0b1msHjrRqzqTkg8ysbn72NW0yZwlTAQQud3PLoYM0d04xtzefwJxsB1JsyrKjnzZRw5oVnJXsup7kTHh1Rruwdu0arWnvJ5ovxRXetnWjtrS0Ri3yetWfTn6pLSutVh9sWK5OWwckWS6/p75OS3E4DhKQBQAjQ0EUFWZCEmRyewoQFRPAMBAciKNxw3pa98zTNG0AqyzVvP72LiyYW9zAQB8AjAeHwYYBb3oOMnPdCPS0Ic+XR2E1jO6fW7j3wi+wEX01LQBTj9Xml5XymodW//HMJsusag6+865lqF3diLzsLDyy7gH+4oP9aGs7QfllVSxCrJsWAMe5qi/QS/6ODgKA3Nwc9eUdO+nalU7yemV8ve8wu31FlFNbh3OtLXC6EtF9MQAIHLjleCcCILAsSzKyiuYAALZs3YTa+ruRm9XJgwOpuNY/gA2PrcSxfQdQUlKE51/Zgk0vNEEzzeXTAhAE0ocGh1BQtQAN84rVx594ks6eOs4xLUKGrsPldrEogPM86bRq26PctP8Yfmtvhcncd6uzxYkA7Db7G4urS9G4YhV5Z2ejv+cq3VFaQe4UF0iS0e/vhr/XT3V1NWg+20a73mvB4HD7w6Zpdk5LB2yQhJ7eK5BMAzmZPjrz4xHm6Cjlzy2HIEpcsrCelmXl4fQPH2H3x5082PetfVqT0JRo4Io/jLMt3yM1LRMZeYWw2Z3Q9RiSk5IoNzefO04d5Tf37MdCb+KkAm1CI4jo0c+E4fHN7FIQaD+DiKaT05UCtyedZUlG83ff4MP3dyLRsxS7m3bYJwOY0AhM5r5zVy8ush8STxYU55M1LuBCRztSPWkIBocwPNgFS9p9UPQbNNlIn/BlFDeMtvOnz8eHYlFEoxEOqyHu7r6E4eA1CNYCys/Jx+69ez6/TcB/f4A9MVFXewc4HIvS2OgYMesw41Hy5FTy9u0vYnQ89NxtAAiiLDtE2eIQRNH6j29bLLGyknkoLZvHhmFAhEnhiMTHjnRgbDx4nYHAbQAYhh4Ls2nogiDJksXqFCRJ+Usks+EcHw2SXVHgdDqh2BU4Ej24f3UlWaw2y1Su9b8toWkYMdMwYiQIsiBKFkGSFDBMZtPM8OXQ7MpyjoU0UhQ7ZJmgSAlkk6NgUx+ZCuBfl5BNUzd0PWzG45ppxKNsmvrwwCBnVMynngvnIZLAumHCagPr8RgrijU8rYCbY7lZiYryVl5qmujNyUO6x8uR0DhmJTg5Mz0DUXUEYyMjrhkA/CmxBKrIzszAyKXLSE1PhTvNDYsow2E1sOjeSrjSk5NnFGCxK+HkbA//2tWHHn+cRNFGSQ4RSxuqKHDdAiOkCTMKkEWpvHj+ItK1GAJXR+GYlYzKJeU4cfIG+3sGINsS5BkFhEZU8eKQgll2G6e4HFyx0IeWc6MU0XVULyqGEY2YM9sBWXS0d4W4qCQfNsWB3kAU777TziOaSGSxkUkWiYiyJwsQJ7GET1njum1BuY8yCr3o6tAoo9BL434/9/vb0Np8PBiKRl/6/8d1svU7XW8eTrUx6+AAAAAASUVORK5CYII="
+              const val IC_NISAN = "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"
+              val SICON = arrayOf(
+                  arrayOf(IC_HAVA, IC_OFKE, IC_BUDS),
+                  arrayOf(IC_KESK, IC_ZIRH, IC_COZME, IC_PARMAK, IC_EJDER, IC_DEHSET)
+              )
+
+              // Karakter 2 buff ikon şablonları (RGB 21x20)
+              const val T_KESK = "JiAcIBwZTT80VDMoORYQPhUQPhQOPRQQOxQPOxQQPBUPPRYPPBQOPRMNQBMOPxUPORcPUjElTz40IR0aJiAcIh0aSDswUjAkQhgSTyYeTiEaTyEaSx8YRRwWRR0XRR4XRR0WRR0VSR4WRxsURx0VSCMaPhkRUTAjTDwyIh0bTTwyUjAkShYOXx0VXh0UWB0SVBgNWyUZViwiUScfVS4iZkExZkAxQRcLTSIUTSIUTR8USRkRPhQMUzAhUD0xUC0hQR0UVyQaZRwVZh4WWBoQYSgbYy4gWzAlWzEnbUc4XDcna0Y0nXlfpH9jn3pfwJ1/az8wQxkQQR4STyweSiIXRR0TUR8VVBcQWhwTURwPXTEgXjEhWDEiZD8uWjcoaUg2gmJNZUYwn35ikGtRpH9ke1A/QxQNTyYbSyMYTycZRhkPTx4UTxYQUhwTXDIhUyoZVjAeXDkmZ0UyWTgmg2VPXkAtjHJZe2JKqopvp4FmeU49SBcQTyEZUiYcTicZRhoRShgQWCIZYzIjVCoZWjMiakUxXjwqWzkmim1VXj8tkXNblHhfknhgaEo1oHtib0IzQhILSRwVUSUcTykeRBsUWy8lXC0hYjcpXDgmbU04TCsaaEg2g2VPXEEtkHVdk3ddmXxjbE45dVQ/f1hEbkMzUCIZSBoTUSUbTikfRBwVVy0jVCYdTiAXQhwOSykXdVVAfF1IYkIwlHdekXhdlXtiZkk2dFVCgV9LViwed0w7UiUbRxkTUCYcTigbRRsTSxwTRQ8Idkk5kXBYh2dPelxGYkQxlHhflHdcl3tgY0czfF9JdFM/SScXeE49YzUpUCEYSBoTUCYbTiYZRRoPUR8VSxEKl2pWknNadFVBZEUzk3lgkXdclnlgZEUyfmFKZ0YyXDwnaEYxYDMnXC0jTh8XSBoUUCUbTiYaRRoQTx0UUBcQURsSfltGi25Vl3pgkXhdknhfYEQyfF1IZkc1Xz4rXTonWDQjXC0hYzMoTyAYSBsTUCUbTikdRRsVTx4WVBoTRxAJd1ZBj3Vbe2BIknhfXEIweV5IeFdBUC4daUQwWTIgWjAfZjMjXiUYVCIWSR0TUScbTikeRR0XUB8XRwwHVyMYhmdQk3tglHtihm1VbVQ/j3BYQh8Pb003WDMiVC0cVisaYiweVBgNUiATSR0SUSccUCoeRhoSTR4UfU08lW1UoYFmdE88aUMzck07mHthmnhfPhgLXDcoViocXy8gVSIVWBcPYh4UXCQYTB4TUikcXz4vRhkRTCAU0K6NvZt7hVdEShEKTBMNTRYOgVA/YzUqRhwXWTAnajYqXBwSWBcQah4Zbx8aYSAYUCIUXjwtdF9LY0g7RhwQkmxUqIJoXSkeTRQNUxsSUhkRShAJQQ4KTCMcWS8lVRsSWRkQXRkSaiAYZBwYVhwUYkU0bFVCTEEwdGJQZkU4QRUJQRQIUh8TViEVViAUXCMVXiUXViAUVyYaXy4gVRsSWBwVVx0VVB8WUR8VbEg3cmJIT0EwIx4aQzgrf2pXdFdKWTMnVikdWSkdWyoeYS4fYS4fXS0fWCkcVSQZVyQcWiYfVyUdVjAla00/c11ISj4uJB8bJyAcIh0aSjoso491saGIsJuDspyFtJ2GuKKJuaKJuKWOs6CJoYZvooVvspyFr5qCrZyCnohvSzkqIx4bJh8c"
+              const val T_ZIRH = "JyAcIBsYTEA1XkU4PyAZQSMYOx8TNRkNPB8UQCQYQCQbPB8ZLxEOKBALMhsUMxoTPBwTXj8xU0M3IBsZJiAcIBwZTEA0XEEzOBQQOxgTKggCUTcofWpSTTQlKQgCKAkGOhwYdlxKclZGQCceSC4kRyUbPhkQXD4vUEI2IRwZUkI2Wz0uPxgRQBcTbEk8XkU2PygciHhdkIBkWkQzQSkdiHRdkH1kVj0uSDMjc1xITyIYWh0VShUNXDorVkI2WDcoQBwTSiIbShwaSB8bY0o4SDMjLRYMfm5WloZrkoJoj35mRC4jMRsQZVI9OyMXRxcRah0YXCIZPhoPWDUmRyMXRSAXSSQbPxcSOxUPclVCnohqhWxVSjIjTDoqZVA+PyIXdlpGnIRmiG9WPR8WQhQOWh0YUiEZSiIXSSEVUCwfRRwWPhsRnoRoiWxUe1lG+dq1/+u+48egmoFniG1W0rSS/+K2/+vAqIZva0c3u5p/WjInTB8aUSIbUyYcUCwgPxYQRiIYYkYy0beVhGNPc0897tKr07iSyrCMx66Kz7GM8tWtoYBnYDwu07SWkW5WViwkTyMdRxoTUSUbUS4iOA0JbVFAblxFUj4rfWVQZkw7Wj8ur5R14sqh48uhy7CMcVRCUjgrgm1XY0w4a005hWdSTSMZSBwTUScbUjAjPRIOaU89nZR0dmpRRzIiRC0gVz4woIBoro9yqo1vqI1wa09AQi0iOysdZFI9n49uinFWSiAVSR4SUCgbUC0hRRwVQiQYY1I8nI1ueWhPSTYnPSQbbk4+j3JZjnFZf2NPRScgOiYaaltDloZnhGxRVi8gSx4VSR0TUCcbTCYZQBYNYkExemJLlIFjlohskYRtSDYocVQ+rpFyrJFwlHpfQicafm9UpZp1m41rhm1WcU0+TSAXSRsUTyYbSyUZQxgQSycdZko4modni3xhV0w7gXBY+d22/+u//+u8//DBsJd5UEItiH5enI1sd1tFVzAiSh0VSRsTTyYbTy4hPhUNX0Axg3BWkX5fZUg4aEk7nHxlfVlHoYBmvJx+eldDlHNdeGBMUDcnhm1Wg21VdVlFSB8USRwTUCcbUjMkQBkRUDIjgnFWXkYzUysgn3djfFRGgF1MeVZFZ0I2i2lXakU5noBqYUI0UjImhnNbZEs4QxwSSR4SUCcbUTAhOhAJbU07d1hDPxkNqoVusYpyNwkEmHRf1biWyayKw6SGOxMMe1dGyKiMUCgdYj4whGNRTyQZSx0SUScbWTgpRBcPVR4VZx8XYB4WViAWTRkPdkk7VCcbro1s3MCZWjAgcEU1XSYaWRsRWx4XXRkVZiMcXyUbTx8SWjYnc15JXDwuYR0VaR8YYBsUVx0ThFhHbT8wUSEXUSQXUCMXUiQaWSwfi15LZy0hWRUObiIaZx0YVRkSXTsrbFNBS0AxdmVRZjwuTRwOVR8SaTUncEExSxYMb0EwXzAhTx0SdUc3ThwRXy8jb0A0UhoSXCEZUxsUZTwtdGFKSj0tIRwZQjcrfmtXaUs6UCoZTyASURwSVSMXUSITUyUVVSQWUBwQVSMWTRwTSBgRSx0WTiYaZEI1d2BLRjsrIh0aJyEdIBsYSTwukn5olIJskXhllXlplXppmYBtmX9smoJvln1rgmJSgWJTknhojnVlkHtoi3RgRTMmIh0aJyAc"
+              const val T_COZME = "JyEdHxkXUUU4fGhXYEw+Vj8yVTswVTwxVD4xVkAzWkA0VzgvQiYeQyYcUzQnVTcqWUE0cVtJUEM1IBsYJiAcIBsYTEIzcl9LNiMbHQoGIgoHJQwJGgMCHQYEEgAADwAAIwcFNBgUNRgSJgsHIgkGKg8JMxkSb1lHUUU2IRwZVEc4b1tHLhgRHwMCQhsXNBMRNhYUNBcUJQ4KeWBPlnxkfWFQKhAMPyEYNBQNLg8IQx8YMAsIMhcSbldDVUc1alNANRoUKwkGTxgWUhkVYzszSyQfOBUSSzEqfWNP/+zDfGNQSjIqMRILRCQYXTsuSxYSWx0aOQ4LMhkPY003PiUaJwwIRxwXRxQROBIMjWtZdlBBVzMplHhkWD4vj3NcVjwujXJeUjIkb087iWtWOhINUBgVRBkUKAwHPSIYQicbLxQONBELYj8zimtXknZeknphiHFbgmtVjnhlfmpXmYNrpIxyiXJdln5llHdgjWxaaEI4PBMPRh4XSiQaRCccLBELNBQNQh8WXjwsuqGClYZploRqkH1nMiMeHBcTZFZClYRpIBkTLR4TpYlwaUQ3SCEdQxkWSR4XTiUbRikdMhQPLxINNxoUWDksm4RsQjcoqpZ+OSYfSzcurZqApZN2vamJmYVs7dSty66OVzQpQR8aNxENSBwVTyYcSi0hPBkUMRkTRjQqg25agG5ZY1ZCgG1YFgMBXkQ4bl5NLiQYb2BMHRMMnYtumIFmhGlXTTQrOBkTTCEWUCcbTDAjLAkFlXhhnYlvXUg5gnBajXxgxbGQcVhITzUqrJl9inlgtqOFa15MeWlSqJB1XEIyoIpwnHpiPA4GUikdTzIjLwwFrI1x7NiycFpIvKOE2cGecWJNa1pJOCkesZt9tJ6AVUQ1UEI1uqODxquMc1hE7NexsI5xMQUATicdTzEhOhcOX0Q3UT4xV0Q2rJZ5vKiHiHdgbF5KfW5XgW5ZYk8/SDgqWko7WEc1jXdfZUw8WD4wZkY5QBcQTCUcSy0gLAsIGgEAPScfc1lJfmtWh3Zet6OGgG9WuKOFIxcPKBsUk35kgGxXGgwIjXZghmlWTDIpJQUCQBcRSSQaTi8iMRURLxEMLw8GQyMVjXdgdGRQYE89sZ1+e2tUEwgEY1JBsp1/f2xWIRIKn4ZtQiIULg4GOxsSPRkTRiUcTC0fOBwWLxAJXT4tjHBWoYducWBK28SjwKqIuaOE4MmlnohreWVRmIJo5c2owqWFjG5XYkIzLw4HOxgRRSQbRSsdKwwGQhYQWSogVDMlg2RNjW1We11Ji3Rde2VRgmtUc15LinNceVxIkHFYgmVNWTYpWysgRhwUMhYNQCUZZFE+Oh8VTxcRWRoWPQ8KiGRQUzIkMhMMd2JUUT8w0LmWUz8ud2JQNBYMVDQmhWVSQw8JUhUPPxQNNRwRX0c0UEU4bVxKQCAYRRQPTRoVNgsFMgwHLwwIGgMAk3dh7M6mlHlhHAcDMhINNRILNxAKYCYfShYQNRkQbldCWEg4HxoXTUI3c2JTQSkhKgkFOg8IQBEJRxwUPxIKSBoQSB4SUCkdRR4XRBoWRRkWQRoXNBcTOyMbcFxJUUQ1IBsYKCEdHhkWVEk/fGtbXEg7Zkk9ako+b1NHak5BZks/YEM4VjYtVTMpVTEqWjYwVzcwTTgub11OUkc7HxoXJyAd"
+              const val T_PARMAK = "JyAcHxsYVEU5ZEM3QB0WRBwURBsTRRoTRhoTRhoTRRoUQhkTPRQPQBQORhkRRRoTQh0UYD8yU0M3IBsZJiAcIBwYTUE1XkAxQRkUSyMcTB8YTB4YTR4YTh4YTh4YTh8ZTh8YTSAYSx4YSxwWTB0YTCIbQxkTXz4wUUI2IRwZVEM4Xj4vRRQOWx0ZYyMdZyIbaSMbZyIaZyIaaiMcZiMabSYabCUZVxoTYx4XYh8ZYR4aXx0YSxYOXjssWEM3WjgqQRwTXCMdYBkUUA4LUxAKVxIIVBEJUg8KUA4KUQ8KXRQMYhoQYBoTaB0XZRsVaR0YcSEaXSMbQRsQWjYoSCIWRx8WUh0WYiogkGRRhF1IgltEhFtFi19NiV5Mh1xKkmRRZjgpWx4VVRcPWRoTYB4YVxURUB0XRh4VRyAWUSgaRxkRShsSVCQaupN47M6n6cyk682l48Sd+9y03sGbnoJkfmBHdEs5YC8kTBoSPQoEazwteE09QRYPTyYdUCcaRxkRTx8XOwgCcUQy48Kd3MCY3L+Y3b+Yyq+I0LSN0raQlnhcnntkeEs6aDkpnHNbsYpvaT8xQRcQTyYdUSgeRx0VRxYNiFlF68ul5smh0LSNxaqEwaiD0beRuJ97u6J9iG5RVjQjiWZPt5V4oYFodlU/TygcRRoTTiUcUiogQRgSf1RDroFnp35jj25Ty7GL5Mqfu6J+rJRzp45utJx4vqaAvqGBnX5lfFxHellDm3xiZUIyQhcQTyYdUSkdRBkTZjcqUxoQOQAAdE063b+a2r2W1b2Vu6N/qZBvpYtspo5tc1ZAaUo4gmROxKeHuJt7ZkMxQhYOTiYcUCcZSBkSTRoRSg4HlmRR8c+rrIZomHRYlXpavKJ9uKB8sJZ4rJN0lHhfdVpGaE06dVpDlHlgYkAuQRYJTiYXUCcZRxgSUx8WSw8Hl2dSwp6AlWxUZT0qUjYhiG5Q1b2WybGNzLSRqY5xp41wnIFnc1dBZEc0TSocRBkMTiUXUSgdRhsUWiEYYRwVVBUOTxMKVxwRSBMIfFtC0bWPzq+M3L2bxqaHUSwcbEUzmHBXvpyAnXhhVyoeRhYMUygbUSkfRRwWWiEbZxwXZR0YZR0XZR8XRQ0EqYhp7tGnelY/RR0RTicYUiMYShcPRBMKZDInmWxaZDUoRhYNVSkeUSoeRhwUWB8Yah0XcyIcYx0WVRUOZC4hyKWG1baTon5kpH9mq4Ztk2lVfU8+bDsvTBEOVxsVYC0iTR4TUygcWzoqRhsPWhsSeCMbbh4WXhkSXRsTXx8XXCMbUh8XWSgcWygaYCoeYyceYCIaXx8YaR4YcCAaYyIYUR8RXDYndWBLXT8vZiEWcCAXaB0VZh0VYRsTZxwWXxcUWhYUVhURVBUOWBYRZBoVYxoUZBsVcB8Zax4ZWRkRXzosb1RDTEEzeWZTaj0wUhsPWSIVXSIWYCEXYyEYZiQZYyMYYCIZXSEYXyEZXh8YYh8YYB8YXB8XVBoTaTwud2JLTD0uIRsYQzcrgWxaa0s7USoaUyIVViEVWCEVXyUWYCYVWiIWVSEVVyIWVh4VVhwUVBwUUSYaZkI1emJNRzwsIh0ZJyEdIBsYSzwvloBrl4NvlXhomHprmntroIBvoX9voINzmn5uhmRTh2NUmHhrlHZnlH1qjnZjRTMnIR0aJyAc"
+              const val T_EJDER = "JyAcHxsYUkQ4YUM1Px0VQRoUQBkTQRoTQhsTQxsUQhoTQBkROxQOPxQORBgRQxoSPhwUXj4yU0M4IBsZJiAcIRwZTEE0XT8wQBoURiIbRR8ZQhsWRB0XRyAYRyAYSCEZSSEaSSEaSB8ZRRsVRR0WRCEZPRoRWz0vUEE2IRwZUkI2WzwuQhYPTxsXThwYOBEKOxsSPBoTQR8YQyEaQh4ZRyEaSCMcMA8KNBYPNxQOTx0WUhwWQxYPXDosVkI2VzcqQBwTUiQcUhsWVR8aZEExSi4dWzwuNxYQPx0YNxIORBwXPxkUSSwiQCgbZUU1VR0VWR0WVCMbPxsQVzUnRyEWRh4UUiIZWBwVTxUQXjcqnH9mWj0sWT8yTjUpXUQ1VjwuUzgrc1dEj3VeVjMnTxUSWxsWWCIZSB4USSAXTycbRRkPWCAWXxsTYSAYNAgEk3Ner5Z6UUUxZ1xIVUo4ZltHU0YzqI5zlnJfLwMEWxsbbh8bcSwjUB0WVycdTiYZRRkPVx8VYh0VXBwUPRIMRCIYt5+Ab2NLUkg2aV1IUkc1a19JvaKFQx0WQRAQbCAddiIeZyMdTRsUVicdUikcRhwUWyIYXRoRVhgPSxUPTRwTqYluaFxDXFI/Vks5Y1hFaFxFo4JqRRcRUhcSeicebyAaYCIaSRwSUicbVCofRh0XXiMaXhkPZB4VWxwTSRAKdkczxK+KWE85T0c1UkY1oJBzdko6PgsIURgTaCAZbSEZZSYbSB0RUScbUSocRRwUXSIZbyEYaR8WVhoRSA8Jc0MymIRmZlpFbWFMWlA9p5V3c0c3PQkHUBgTZyAZbSEYXyMZSBwSUSYbTicZRBoPVh4UYxsUaSAZVRoSShELdEc0tqGDYFVDUEc4TEQ1hXVebkM1QQ4KTxcTaiAZax8YWiAZSBsUUCUbTyYaRRkPWiAXXRgRYRwVVRkSURsQu5l8fXBYYldEVk09Qzsua19Lo4NqTBoTSxQQaSAaayAZWCAZSRoUUCUcTygdRRsTWSAYYRsTWhsTPA0ITiYarph6aV9JWlA9aV1KXVJBbWBLx6uNSSMWPBAKXx0VZR0WVx8XSRwTUCYbTikeRRwWWSAZZh4WXx4WKwEAjnVeoIttWk86W1JATEQzXVNBRj0slHtilXdfLQUAZCEYXxsTViAVSB4SUScbTiodRRwUWCAYYh0VUhUPXjcrp41zXkY0YU8/TDwuUUI0UD8xTD4xZ0o3g2FNYz4wVhcPXxwVVSEZSx4UUSccWTooRhsQWB8VYyAXVxwVZTwzSCQeQBsXNxENRRsVNBAMQxsUMhAMSiQdSyMbZjwxXSEXXRwTXigcTx8SWjYmcl9JWz8vXSIXYR4XVRkUPhAOOxUUPxMRUBwUSRYQTBoTTRkQTBkSQxURQRcTQhEOXR8WXBwTVBsQXTopbVNAS0ExdmZRZj0vSxoOUSEVTR0UUSMaVCMZYCYZWyUXWyQYWyMYWiMYTxwVTRoVUB0XVB4VUBsRZDssdWFJSzwtIRwZQjcrfmtXaUs5UCoZUiMVVSEVVyIVXCUXXCYWVyMVUyAUVCIVVh8XVh4WUx0WUCYbZEI2d2BMRjsrIh0aJyEdIBsYSTwukn9ok4JskXdllHholnponH9snH9rm4JwlXxrgmJShGJSlXdnkHVlj3toinRgRTMmIh0aJyAc"
+              const val T_DEHSET = "JiAcHRkXY1REa0o6QBsVRBsVRBoURRoURBsTRRsTRRsUQhkTPRQOQRQORhkRRRoSQRsUZ0c3ZlhGHxoXJiAbIBsYX1FBa0w5PxgSSyIdTB8ZSx4YTB4ZTCAaTCEaTCEaTCEbTCEbTR4YTBwXTB4YTSIbQhgSa0s4Y1VDIR0ZZFJDakk3RRILWx0VXh8XWR4UWR8VUhsRRRQMQhEKQhEKQhEJRBIMUhcQWhwUWRsTYCAYYh8YSxQMakg0aVVEXDkqQBsTWSIaaR0WZx0UXRwSWBgNWyMUimFIt5Z1spBuuZl4jWNLXSEVWRUMYBsSZxwXbiAZYCQbPxgPWzgoSCIVRx8WVCAXXBkSaB8XUBULc0Ev0a+M176V1L2SzLSMwaiEx66JyaaGajkpSREJZR8YZR0WXyMaTCIZSSEXUSgaRhgQWCAXYBwUWhYPZjoqzbORxKuGrZl3noxrjnpfgWtWhnFbqJB0wKeJSCYbTxQMcCMYbyofUCEZVSceUCcZRxkRURsSXh4VTRAJdU498920zLWRnYpqvqqFr5p7eGVSallJcVdGtpyAjm9aTRcOayMXXyEXSBkTUyYcTy0dNg8FXTMjjmFNQBIHQSgbf29Zgm9Yr5p4wKuIaV5JUUY4XlBAVkU2hXNbya2OSCARil5LYjcpQhgPUCgdTzIhMg8DooBmeE44KgAARjIlRTYpPy0gyLGNf29UBAIALigfd2tWLSQYfm9XxaqMMQ0Cbks2o39nOA8GUCseUTIhNREEp4Zpvpt8Qh4RSDMj38ulmYVok4FkgXJXr51+oZB0Z1tHYFI+tqOEZ1M9QiMUu5p7p4RqNA4FTisfTzAfLgoAm3pdh3BRpYxsinVZqZRxq5d0hXVbf3BYlIRnWk8/WE09r5p6spt7XEozmIBjiXJTl3ldMRAHSCoeTzAfLgkApIRnXUgxX0s1X0w3emZLvKaDb2FLZ1tHb2NNWE4/cmROwqyKoYxsaldASzkmYUwzoYJmLw4FSCofUi8eNw0CakkymX9kNyAQOyUWnYVnuaN/iHlfcWVPbmJMfG5WopF0sZ18j3tfSzglKRQEm4FmakgzPRMKTyoeVC8fRhsPPRsMm4FkaE43QSgZZ0w6vqaEkYNkY1hDcWROp5l4rp19g3BXbVlDYEw3XEMtnIJmQSESSxwTVCgdUi0dRxsOPBcKakYyn4BlNBgLIQIAbE87xK+LvKqFwa6Lj35ijX1iXkYzNRwQSjEgnn9laUYyQBsOUCEWVCkcVzcmSBsOUxwRUxMKq3tldUo5QRELPRAIZ0cznIRnknhdVjomfmRNWzgqLwYAcEw6rHxlUhIJWSEWUiASWTIkhG9VXD4uURkPWRQNcTQolGRRTBsSQxUOOhcKeV5JRiQVNREFcVRAYz0wPhMMj2VTcjQoWRQNVBgPXjgqgWdPe25VoYtsYDcoUBwPUh0RViIWVCAWUR4UUCIVbEIxTR8USBkOZjwsWi0iSRoTUSAXUxsRURkPXzUloIhog3NYHRgWcmNOqJByaEk3VCsbUyEVVyEWVyIWVyEVUx0SVyIWWCMXVCATTx0VTx0WTh0VUicbZkI1poxtemxSHxoYJyAcHBgWb2BMoo50lYBslnlomHprmHtrnH9vnX9vnoJymX5uh2RUhGNVlXhqk3dokHponodwdmROHhkXJiAc"
+
+              // Sol üstteki buff ikonlarının şablonları (RGB, 21x20)
+              const val T_HAVA = "ODExSz8/alNMRiceLAsGLQgELgYDMAgGOBQQORcRLg8KJAUEJAUEKAYEKwYDLAcEMxEHUjMlaVFJSz8+OTEvSz45X05KWDo3SiIfSyIgQRkUQhsUUisjQB0UVDgtYEQ6ORsWQyQdSyUdRBoTRhwVUCgbUCkaWzwzYE1KUUM+dFZJUC0mSBQSXBsbVRsZNAkGRSQen35wYkk2wrmivrGgPykmalFLhmJVShwTTxsUWyIVXiERShcOUSsmfVhSZUM0TSUcWR8bZBwbWhsZOxAOZUZBXD84dmNRfnRZin5vXEhFUz47Z05FaEI4TxoUXiATZSEQXCMWTiMdVywlVjEjTycdWyEcYhoXWRkXNQoHSyomnH5xZlA8rKKJfm5dPSkmcVhShWFTUSQbUBkVXx8UZB8QXiIXUiQcQBILViohSyAYWR8YYxoTWRoUPBEOZEZBWDs2Y0pDZlJCYk9EX0tHaVNGbEw7XzQrThYSYR0WbCEaaCUeVx8XRw4GVykhSh8XVx4VZR4VWhsTNQoGSyolmHtzUz46ppiLe2VbQywnhnVoinRkSSAXThYSZiAaciQfZiIcVRsSSA4FWCwkTSEXWB8WXxoSVRcPRBoSc1VKUTMqY0tGSjQtYEU7bVFFYEc9Wj80ZDsyUBYTayQdcCAaYx8YUx0VRhEJWi8mUCIYWyEXXBgQVRgOTCETb1NCeWFTW0VBXUhFc1xSVz0waVBLXkI5XzUsThUSaSAbbR0VYyEZUyEZRhQNWi8mUCIYYCMaaSIaYCAWTiIUe2FQWz4vYkpFPSknXkg+dmFUVD87UjgwZTkxTRQRZyEbbiIZYiUaUiEZRRQNWSwlTiAYXCIZaSQcXyAYRhsTbFFDfWRSaFFFbFpTeV9RVjksbldRZ0tDYjYuTRQRZyEabyIZYCEYUB8XQhILVykiSx8YViAZYB4ZWh4bQRQSelxPWjklfWFRZkw+elxOt5uPQComX0pBbUlBTRMPZyAWbyIWXR4TTh0UQA8IVyoiSh8XVSEcWRoXUhoWUismYD8xQBwJiWpZYEU0lXpoyrKiQi0mOB8Vb1BDVCQbYSAVayMVXB8STx4VQRAJVy4mSSEYUR4XTxYOckc5z8GqoZF5oIlx28qtrZ+Byb2a7uPDwLGbm4x2w7qguaeUWCgfXB0VXCIYUiEYRBMMVy8mSSEYUB4WThUMcUc329Cz5Ne74s6z8eTB/vXL/vjK/PXN6d3D3dK90821p5eJUygjWR0XWyIZUiEZRRQNWDEnSSEXUR4WUhUNTBgKXDoiUzchSSwcmIVr++/H+/HG1smnZk04RSsjMx4aMhQSUB4aXh8YWyIXUiIZRRUOZkM0SycYVyEWaCAZYBwSVhoPURsRSRgQWjUn58uw58yxX0AwQxkQShcSUBkUVBkSYyAVaSIUXSUVUicYViwee11NWDgoWicbYRoTYxwUZR8ZXxsYWh4bVCsh5MWu5cWvTSgdQRQOUhgTYBwVYh4UZyIUZSEQViISVzQkd1ZGWEQ3blZIZD0uURwPVR0SXCEWXiAXVyEYclFE1r2n0baheVtPSSMZUR4UXiAVXCEVVyAQVSEQZDwsalFCVD8zNisgXU0/e2FRTSkZSCARVSYYWSYZVikZWTsnTTQhTTYlUDkrRiYYTiMUVyQVVCQUSR8PTSgXfGBQXU4/NCoe"
+              const val T_OFKE = "PDMzTUA/alNOVjYtMhALLQcELQcELggEMxIHNhcNORoROxsRNBUHMg0FMQYEMggEMxEGUjMmaVFKTUA+OzIyTD86YU1LWDk4Rh8cSyIeRhoURRoTUCceX0AxNRYMORgPPRwQak49bk9BRx0WSyEZUSwdTiscWTw0YU1KUUM/c1ZKUSwmRhQUWR0bXCEWSxQKTRYOZDElmHVfNRYQLg4IRCMSro1ymHFeShsSWCkgYzQlWSsbQhgPUSsle1lSZEM2TiMcVh8cYyEeezotVhsRTxUNWiQYpX9le1pKXj0xeVhFroptbEEsTh4VWikghVNDdkQ0UCIXTSMcVSwlVTElUSYeViEdWxwZl1pNlmFTXyseXzAftJF12bmjy6qYyKeTs5J2aEIqUSUXfU9Cn2tcZjAiVSUaUSYePRMMVSoiTCAZTBwXSxYPZjYns5F3wKOGu6CCzbOSsZd5y62Wu52It6GDr5h4vqSFt5N6dz0yYCMbZC8nVCggPhILVikiSx8YSh0VRhYMSiAQmXxf38motJ17sZl3pYxs48asvqGLloJjqZV06tSzv6CDWyMZWBsWWyYhTiEaPREJViwmSiAZUScelG1chWBJoIVlyLGOzbWT6c+u0LiV1Lma0bWa4sqq0rqczbWWuZ6AiFtHmGdWWysfTR8WPhEJVi8nSSEZTSUckW1csI51yK2NyLCNyrGP4sqn7dWy/OPB8tq46dCv2b+kwKmNx6+QrIdtnHNbWCsZTR4TPhAIVTAnSSEZSh8YXTEqhV1P0LSXuqJ/wquIr5x4qZh07927y7mXr5t6vqeLp49zs5t+gVlKZDYsTyAWTR0UPhAJUiwkRx8Wb0k9qoV2t5SA3cKksJh2uqOAl4VhnY1r49Oxv6+NkoBeqZNzmoJjrZR2s5F/qIR2cko+Sx8WOxAJTyggRRwTWjAhbEIthl9H38KjzLSSv6mGopFux7eVtKSCuKiGn45st6J/xq6MzLGThmBOa0I0XDMnSSAXNxAIUCkhRhwUSRoPSRYHYzYivJ6BzbWV5tCuoo9uxrKSi3dXo5BwkoBfuaSCz7eWv6OIaz80SRgSSx0WSiAYOBAJVC8mSh8XUx0XWR0XeEY3rYt2sph+qZR0tJyAoYhtjXVanYRprJR4moRmuqSHuJyDfE4/WyMcVB0XUSEYQRQMVi8mSx8YVB0aYiQgoW1hp4R0vqSMe2ZHt5+Dm4Npu6KJs5qBwamOnYZpyLKXv6OMrX1teT83Vh0YUyEYQxUNVzEnSiAYVB4ZXiAbajYqPhsTmYFoh3RUl4BknIVt6c+4ya6VoIZrnYZoqZN2YkQubz4uZi0jVx8YUyIZQxYNZEM0TCYYVCEVXSAVWCMSclE9po92pY90xKuPnol1m4N0qo16ya2RsJV3spl9jW5WVyQSWR4RWSQYUycZVC0eel1PWjgoUiMVWyEVaDYnvJ+WZkdBPx8VpIlyXUg6JxAMVDYttJV8bUg2aD81pYB2ZzQmVh4QVCQWWDQkdVdGWUU8cFVHYj0uUCITYDQlWzMqRRwVUCoghm1aMxsRKxAJPR4VmHhkhV5OSBkQWSshYDMkTiERYj0ta1FCU0A1Oi4oX0xAe2BRSykZRiERUSQWVCUXUycZQyQSNBYGPBwNRCMTTy0bVCwaUCARTiERRiAPTCkZfGBRX0w/Nisk"
+
+              // Nişan düğmesi: pasif (açık renk) ve aktif (koyu) görünüm, RGB 29x29
+              const val T_NP = "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"
+              const val T_NA = "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"
+          }
+          EOF
+
+          cat > proj/app/src/main/java/com/benim/tiklayici/MainActivity.kt <<'EOF'
+          package com.benim.tiklayici
+
+          import android.app.Activity
+          import android.app.AlertDialog
+          import android.content.Intent
+          import android.graphics.Typeface
+          import android.graphics.drawable.GradientDrawable
+          import android.os.Bundle
+          import android.provider.Settings
+          import android.view.Gravity
+          import android.view.ViewGroup
+          import android.widget.ImageView
+          import android.widget.LinearLayout
+          import android.widget.ScrollView
+          import android.widget.TextView
+          import android.widget.Toast
+
+          class MainActivity : Activity() {
+              private var statusTv: TextView? = null
+              private var gameTv: TextView? = null
+              private val cBg = 0xFF05080E.toInt()
+              private val cCard = 0xFF0D1522.toInt()
+              private val cAccent = 0xFF2F9BFF.toInt()
+              private val cCyan = 0xFF7CD0FF.toInt()
+              private val cMuted = 0xFF8CA0B8.toInt()
+
+              private fun shape(fill: Int, stroke: Int, r: Float, sw: Int): GradientDrawable {
+                  val g = GradientDrawable()
+                  g.setColor(fill)
+                  g.cornerRadius = r
+                  g.setStroke(sw, stroke)
+                  return g
+              }
+
+              private fun prefs() = getSharedPreferences("ayar", MODE_PRIVATE)
+
+              private fun refresh() {
+                  val on = ClickService.inst != null
+                  statusTv?.text = if (on) "● Servis açık" else "○ Servis kapalı  ·  aşağıdan Erişilebilirlik'i aç"
+                  statusTv?.setTextColor(if (on) 0xFF4CE0A0.toInt() else cCyan)
+                  val name = prefs().getString("game_name", "") ?: ""
+                  gameTv?.text = if (name.isEmpty()) "Oyun seçilmedi" else "Seçili oyun: " + name
+              }
+
+              override fun onResume() {
+                  super.onResume()
+                  refresh()
+              }
+
+              private fun pickGame() {
+                  val i = Intent(Intent.ACTION_MAIN)
+                  i.addCategory(Intent.CATEGORY_LAUNCHER)
+                  val list = packageManager.queryIntentActivities(i, 0)
+                  val apps = list.map { Pair(it.loadLabel(packageManager).toString(), it.activityInfo.packageName) }
+                      .filter { it.second != packageName }
+                      .distinctBy { it.second }
+                      .sortedBy { it.first.lowercase() }
+                  if (apps.isEmpty()) {
+                      Toast.makeText(this, "Uygulama listesi alınamadı", Toast.LENGTH_LONG).show()
+                      return
+                  }
+                  val names = apps.map { it.first }.toTypedArray()
+                  AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                      .setTitle("Oyunu seç")
+                      .setItems(names) { _, idx ->
+                          prefs().edit().putString("game_pkg", apps[idx].second).putString("game_name", apps[idx].first).commit()
+                          refresh()
+                      }
+                      .setNegativeButton("İptal", null)
+                      .show()
+              }
+
+              private fun launchGame() {
+                  val pkg = prefs().getString("game_pkg", "") ?: ""
+                  if (pkg.isEmpty()) {
+                      Toast.makeText(this, "Önce oyunu seç", Toast.LENGTH_SHORT).show()
+                      return
+                  }
+                  val li = packageManager.getLaunchIntentForPackage(pkg)
+                  if (li == null) {
+                      Toast.makeText(this, "Oyun açılamadı", Toast.LENGTH_SHORT).show()
+                      return
+                  }
+                  if (ClickService.inst == null) {
+                      Toast.makeText(this, "Erişilebilirlik servisi kapalı, pencere çıkmaz", Toast.LENGTH_LONG).show()
+                  }
+                  startActivity(li)
+              }
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  val d = resources.displayMetrics.density
+                  fun dp(v: Int) = (v * d).toInt()
+
+                  val col = LinearLayout(this)
+                  col.orientation = LinearLayout.VERTICAL
+                  col.gravity = Gravity.CENTER_HORIZONTAL
+                  col.setBackgroundColor(cBg)
+                  col.setPadding(dp(18), dp(36), dp(18), dp(24))
+
+                  val logo = ImageView(this)
+                  logo.setImageResource(R.drawable.ic_logo)
+                  col.addView(logo, LinearLayout.LayoutParams(dp(100), dp(100)))
+
+                  val title = TextView(this)
+                  title.text = "OTO AV"
+                  title.textSize = 28f
+                  title.letterSpacing = 0.15f
+                  title.setTypeface(title.typeface, Typeface.BOLD)
+                  title.setTextColor(cCyan)
+                  title.gravity = Gravity.CENTER
+                  title.setPadding(0, dp(8), 0, dp(2))
+                  col.addView(title)
+
+                  val sub = TextView(this)
+                  sub.text = "Savaşçı  •  Sura  •  Nişan  •  Oto Topla"
+                  sub.textSize = 12f
+                  sub.setTextColor(cMuted)
+                  sub.gravity = Gravity.CENTER
+                  sub.setPadding(0, 0, 0, dp(14))
+                  col.addView(sub)
+
+                  val st = TextView(this)
+                  st.textSize = 14f
+                  st.gravity = Gravity.CENTER
+                  st.setPadding(dp(12), dp(10), dp(12), dp(10))
+                  st.background = shape(cCard, 0xFF1F4F8F.toInt(), dp(12).toFloat(), dp(1))
+                  statusTv = st
+                  col.addView(st, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
+                  val gt = TextView(this)
+                  gt.textSize = 15f
+                  gt.setTypeface(gt.typeface, Typeface.BOLD)
+                  gt.setTextColor(0xFFE6F0FF.toInt())
+                  gt.gravity = Gravity.CENTER
+                  gt.setPadding(dp(12), dp(10), dp(12), dp(10))
+                  gt.background = shape(cCard, 0xFF14263F.toInt(), dp(12).toFloat(), dp(1))
+                  gameTv = gt
+                  val glp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                  glp.topMargin = dp(10)
+                  col.addView(gt, glp)
+
+                  fun btn(label: String, filled: Boolean, act: () -> Unit): TextView {
+                      val b = TextView(this)
+                      b.text = label
+                      b.textSize = 15f
+                      b.setTypeface(b.typeface, Typeface.BOLD)
+                      b.gravity = Gravity.CENTER
+                      if (filled) {
+                          b.setTextColor(0xFF04101F.toInt())
+                          b.background = shape(cAccent, 0xFF9ADBFF.toInt(), dp(12).toFloat(), dp(1))
+                      } else {
+                          b.setTextColor(0xFFE6F0FF.toInt())
+                          b.background = shape(0xFF111B2B.toInt(), 0xFF2A6CB8.toInt(), dp(12).toFloat(), dp(1))
+                      }
+                      b.setOnClickListener { act() }
+                      return b
+                  }
+
+                  val row = LinearLayout(this)
+                  row.orientation = LinearLayout.HORIZONTAL
+                  val b1 = btn("Oyunu Seç", false) { pickGame() }
+                  val b2 = btn("Oyunu Başlat", true) { launchGame() }
+                  val p1 = LinearLayout.LayoutParams(0, dp(48), 1f)
+                  p1.rightMargin = dp(4)
+                  val p2 = LinearLayout.LayoutParams(0, dp(48), 1f)
+                  p2.leftMargin = dp(4)
+                  row.addView(b1, p1)
+                  row.addView(b2, p2)
+                  val rlp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                  rlp.topMargin = dp(10)
+                  col.addView(row, rlp)
+
+                  val how = TextView(this)
+                  how.text = "1) Erişilebilirlik'ten Oto Av servisini aç.\n" +
+                      "2) Oyunu Seç ile oyunu belirle, Oyunu Başlat ile aç.\n" +
+                      "3) Pencere yalnızca o oyunda görünür. Başka uygulamaya geçince gizlenir ve durur.\n" +
+                      "4) Logoya dokun: küçült / büyüt. Logodan tutup sürükle.\n" +
+                      "5) ☰ menüsünde karakteri seç (Savaşçı / Karakter 2), becerileri aç / kapat, \"dene\" düğmeleriyle dene.\n" +
+                      "6) ▶ başlat, ■ durdur.\n\n" +
+                      "Yuvası hazır olmayan becerilerde \"Yuva ayarla\" ile beceri düğmesine dokun. \"İkon öğret\" ile sol üstteki buff ikonunu da göster; öğretmezsen süreye göre yeniler.\n\n" +
+                      "Android 11 ve üstü gerekir."
+                  how.textSize = 13f
+                  how.setTextColor(0xFFB8C7DB.toInt())
+                  how.setPadding(dp(14), dp(12), dp(14), dp(12))
+                  how.background = shape(cCard, 0xFF14263F.toInt(), dp(12).toFloat(), dp(1))
+                  val hlp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                  hlp.topMargin = dp(12)
+                  col.addView(how, hlp)
+
+                  val acc = btn("Erişilebilirlik Ayarları", true) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                  val blp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48))
+                  blp.topMargin = dp(14)
+                  col.addView(acc, blp)
+
+                  val sv = ScrollView(this)
+                  sv.setBackgroundColor(cBg)
+                  sv.addView(col)
+                  setContentView(sv)
+              }
+          }
+          EOF
+
+          cat > proj/app/src/main/java/com/benim/tiklayici/ClickService.kt <<'EOF'
+          package com.benim.tiklayici
+
+          import android.accessibilityservice.AccessibilityService
+          import android.accessibilityservice.AccessibilityService.ScreenshotResult
+          import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
+          import android.accessibilityservice.GestureDescription
+          import android.content.SharedPreferences
+          import android.content.res.ColorStateList
+          import android.graphics.Bitmap
+          import android.graphics.BitmapFactory
+          import android.graphics.drawable.BitmapDrawable
+          import android.graphics.Path
+          import android.graphics.PixelFormat
+          import android.graphics.Typeface
+          import android.graphics.drawable.GradientDrawable
+          import android.os.Build
+          import android.os.Handler
+          import android.os.Looper
+          import android.os.SystemClock
+          import android.util.Base64
+          import android.util.DisplayMetrics
+          import android.view.Display
+          import android.view.Gravity
+          import android.view.MotionEvent
+          import android.view.View
+          import android.view.ViewGroup
+          import android.view.WindowManager
+          import android.view.accessibility.AccessibilityEvent
+          import android.view.accessibility.AccessibilityWindowInfo
+          import android.widget.FrameLayout
+          import android.widget.ImageView
+          import android.widget.LinearLayout
+          import android.widget.ScrollView
+          import android.widget.SeekBar
+          import android.widget.Switch
+          import android.widget.TextView
+          import android.widget.Toast
+          import java.util.concurrent.Executors
+          import kotlin.math.abs
+
+          class ClickService : AccessibilityService() {
+
+              companion object {
+                  var inst: ClickService? = null
+                  const val MAXS = 6
+              }
+
+              private val handler = Handler(Looper.getMainLooper())
+              private val worker = Executors.newSingleThreadExecutor()
+              private lateinit var prefs: SharedPreferences
+              private var wm: WindowManager? = null
+
+              @Volatile private var tplBuff: Array<IntArray?> = arrayOfNulls(MAXS)
+              private val tplNP: IntArray by lazy { decodeTpl(Cfg.T_NP) }
+              private val tplNA: IntArray by lazy { decodeTpl(Cfg.T_NA) }
+
+              // ayarlar
+              private val skillOn = BooleanArray(MAXS)
+              private val bx = FloatArray(MAXS)
+              private val by = FloatArray(MAXS)
+              private val secs = IntArray(MAXS)
+              private val thr = FloatArray(MAXS) { 22f }
+              private val useTimer = BooleanArray(MAXS)
+              private val noSee = IntArray(MAXS)
+              private val verifyAt = LongArray(MAXS)
+              private var iconRow: LinearLayout? = null
+              private val panelIcons = ArrayList<ImageView>()
+              private val panelIdx = ArrayList<Int>()
+              private var profile = 0
+              private var nSk = 3
+              private var gamePkg = ""
+              private var inGame = false
+              private var nisanOn = true
+              private var pickOn = true
+              private var pickMs = 500
+              private var evPkg = ""
+              private var learnPt: FloatArray? = null
+              private var learnIdx = 0
+              private var learnAfter = 0L
+              private val iconCache = HashMap<String, BitmapDrawable>()
+
+              // durum
+              var running = false
+              private var busy = false
+              private var busySince = 0L
+              private val present = BooleanArray(MAXS)
+              private val miss = IntArray(MAXS)
+              private val lastCast = LongArray(MAXS)
+              private var nisanState = 0      // 0 = bilinmiyor, 1 = pasif, 2 = aktif
+              private var scoreP = 99f
+              private var scoreA = 99f
+              private val scoreB = FloatArray(MAXS) { 99f }
+              private var lastTap = 0L
+              private var lastNisan = 0L
+              private var nisanShotAt = 0L
+              private var panelLp: WindowManager.LayoutParams? = null
+              private var outCount = 0
+              private var resumeAfter = false
+              private var skillLock = 0L
+              private var startAt = 0L
+              private var nisanCount = 0
+              private var skillCount = 0
+              private var pickCount = 0
+              private val recastGap = 1800L
+              private val castLockMs = 650L
+              private val nisanGap = 350L
+
+              // arayüz
+              private var panel: View? = null
+              private var menu: View? = null
+              private var menuLp: WindowManager.LayoutParams? = null
+              private var menuShown = false
+              private var startBtn: TextView? = null
+              private var timeText: TextView? = null
+              private var statusText: TextView? = null
+
+              // mavi - siyah tema
+              private val cBg = 0xF0070B12.toInt()
+              private val cStone = 0xFF111B2B.toInt()
+              private val cStroke = 0xFF2A6CB8.toInt()
+              private val cAccent = 0xFF2F9BFF.toInt()
+              private val cCyan = 0xFF7CD0FF.toInt()
+              private val cText = 0xFFE6F0FF.toInt()
+              private val cMuted = 0xFF8CA0B8.toInt()
+
+              // ---------------- yardımcılar ----------------
+
+              private fun decodeTpl(b64: String): IntArray {
+                  val bytes = Base64.decode(b64, Base64.DEFAULT)
+                  return IntArray(bytes.size) { bytes[it].toInt() and 255 }
+              }
+
+              private fun removeSafe(v: View?) {
+                  if (v == null) return
+                  try {
+                      wm?.removeView(v)
+                  } catch (ex: Exception) {
+                  }
+              }
+
+              private fun toast(s: String) {
+                  Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
+              }
+
+              private fun screen(): IntArray {
+                  val m = DisplayMetrics()
+                  @Suppress("DEPRECATION")
+                  wm?.defaultDisplay?.getRealMetrics(m)
+                  return intArrayOf(m.widthPixels.coerceAtLeast(1), m.heightPixels.coerceAtLeast(1))
+              }
+
+              private fun loadCfg() {
+                  nisanOn = prefs.getBoolean("nisan", true)
+                  pickOn = prefs.getBoolean("pick", true)
+                  pickMs = prefs.getInt("pickms", 500)
+                  gamePkg = prefs.getString("game_pkg", "") ?: ""
+                  profile = prefs.getInt("profile", 0).coerceIn(0, Cfg.PNAME.size - 1)
+                  nSk = Cfg.SNAME[profile].size
+                  val tp = arrayOfNulls<IntArray>(MAXS)
+                  for (i in 0 until MAXS) {
+                      present[i] = false
+                      if (i >= nSk) {
+                          bx[i] = -1f
+                          by[i] = -1f
+                          skillOn[i] = false
+                          continue
+                      }
+                      val k = "s" + profile + "_" + i + "_"
+                      val fixed = Cfg.SFIXED[profile][i]
+                      var dx = Cfg.SX[profile][i]
+                      var dy = Cfg.SY[profile][i]
+                      var secDef = Cfg.SSEC[profile][i]
+                      var tStr: String? = null
+                      if (profile == 0 && i == 2) {
+                          dx = prefs.getFloat("bx2", -1f)
+                          dy = prefs.getFloat("by2", -1f)
+                          secDef = prefs.getInt("budssec", 60)
+                          tStr = prefs.getString("t2", null)
+                      }
+                      bx[i] = if (fixed) Cfg.SX[profile][i] else prefs.getFloat(k + "x", dx)
+                      by[i] = if (fixed) Cfg.SY[profile][i] else prefs.getFloat(k + "y", dy)
+                      secs[i] = prefs.getInt(k + "sec", secDef)
+                      skillOn[i] = prefs.getBoolean(k + "on", defaultOn(profile, i))
+                      val learned = prefs.getString(k + "t", tStr)
+                      val def = Cfg.STPL[profile][i]
+                      thr[i] = Cfg.BTH
+                      if (fixed && def != null) {
+                          tp[i] = decodeTpl(def)
+                      } else if (learned != null) {
+                          tp[i] = decodeTpl(learned)
+                      } else if (def != null) {
+                          tp[i] = decodeTpl(def)
+                          thr[i] = Cfg.STHR[profile][i]
+                      }
+                  }
+                  tplBuff = tp
+                  if (!running) timeText?.text = Cfg.PNAME[profile]
+                  rebuildPanelIcons()
+              }
+
+              private fun defaultOn(p: Int, i: Int): Boolean =
+                  if (p == 0) prefs.getBoolean("b" + i, Cfg.SON[0][i]) else Cfg.SON[p][i]
+
+              private fun skillEnabled(p: Int, i: Int): Boolean =
+                  if (p == profile) skillOn[i] else prefs.getBoolean("s" + p + "_" + i + "_on", defaultOn(p, i))
+
+              private fun iconOf(b64: String): BitmapDrawable {
+                  val got = iconCache[b64]
+                  if (got != null) return got
+                  val bytes = Base64.decode(b64, Base64.DEFAULT)
+                  val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                  val d = BitmapDrawable(resources, bmp)
+                  d.setFilterBitmap(false)
+                  iconCache[b64] = d
+                  return d
+              }
+
+              private fun skillIcon(idx: Int): BitmapDrawable = iconOf(Cfg.SICON[profile][idx])
+
+              // Yüzen penceredeki ikon şeridi: sadece açık olanlar görünür
+              private fun rebuildPanelIcons() {
+                  val row = iconRow ?: return
+                  row.removeAllViews()
+                  panelIcons.clear()
+                  panelIdx.clear()
+                  fun add(idx: Int, d: BitmapDrawable) {
+                      val iv = ImageView(this)
+                      iv.setImageDrawable(d)
+                      iv.alpha = 0.35f
+                      val p = LinearLayout.LayoutParams(dpx(24), dpx(24))
+                      p.rightMargin = dpx(3)
+                      row.addView(iv, p)
+                      panelIcons.add(iv)
+                      panelIdx.add(idx)
+                  }
+                  if (nisanOn) add(-1, iconOf(Cfg.IC_NISAN))
+                  if (pickOn) add(-2, iconOf(Cfg.IC_EL))
+                  for (i in 0 until nSk) {
+                      if (skillOn[i] && bx[i] >= 0f) add(i, skillIcon(i))
+                  }
+                  updateStatus()
+              }
+
+              // ---------------- dokunma ----------------
+
+              private fun tapFrac(fx: Float, fy: Float) {
+                  val s = screen()
+                  val j = 0.004f * s[1]
+                  val x = (fx * s[0] + (Math.random().toFloat() * 2f - 1f) * j).coerceIn(0f, s[0] - 1f)
+                  val y = (fy * s[1] + (Math.random().toFloat() * 2f - 1f) * j).coerceIn(0f, s[1] - 1f)
+                  val path = Path()
+                  path.moveTo(x, y)
+                  val g = GestureDescription.Builder()
+                      .addStroke(GestureDescription.StrokeDescription(path, 0, 40))
+                      .build()
+                  dispatchGesture(g, null, null)
+                  lastTap = SystemClock.elapsedRealtime()
+              }
+
+              // ---------------- görüntü analizi (şablon eşleştirme) ----------------
+
+              // Küçük skor = şablon bulundu. Ortalama mutlak renk farkı döner.
+              private fun slide(px: IntArray, rw: Int, rh: Int, t: IntArray, tw: Int, th: Int): Float {
+                  val n = tw * th * 3
+                  var best = Int.MAX_VALUE
+                  for (y in 0..(rh - th)) {
+                      for (x in 0..(rw - tw)) {
+                          var s = 0
+                          var ti = 0
+                          var yy = 0
+                          while (yy < th) {
+                              var p = (y + yy) * rw + x
+                              var xx = 0
+                              while (xx < tw) {
+                                  val c = px[p++]
+                                  s += abs(((c shr 16) and 255) - t[ti]) +
+                                      abs(((c shr 8) and 255) - t[ti + 1]) +
+                                      abs((c and 255) - t[ti + 2])
+                                  ti += 3
+                                  xx++
+                              }
+                              if (s >= best) break
+                              yy++
+                          }
+                          if (s < best) best = s
+                      }
+                  }
+                  return best.toFloat() / n
+              }
+
+              // Sol üst buff satırı: Hava Kılıcı, Öfke ve (öğretildiyse) Buds ikonları var mı?
+              private fun analyzeBuffs(b: Bitmap, tpls: Array<IntArray?>): FloatArray {
+                  val out = FloatArray(MAXS) { 99f }
+                  val sc = b.height / 1080f
+                  val x0 = (0.03f * b.width).toInt()
+                  val x1 = (0.30f * b.width).toInt()
+                  val y0 = (0.12f * b.height).toInt()
+                  val y1 = (0.22f * b.height).toInt()
+                  val f = 0.5f / sc
+                  val rw = ((x1 - x0) * f).toInt()
+                  val rh = ((y1 - y0) * f).toInt()
+                  if (rw < Cfg.TW + 2 || rh < Cfg.TH + 2) return out
+                  val reg = Bitmap.createBitmap(b, x0, y0, x1 - x0, y1 - y0)
+                  val small = Bitmap.createScaledBitmap(reg, rw, rh, true)
+                  val px = IntArray(rw * rh)
+                  small.getPixels(px, 0, rw, 0, 0, rw, rh)
+                  for (i in 0 until MAXS) {
+                      val t = tpls[i] ?: continue
+                      out[i] = slide(px, rw, rh, t, Cfg.TW, Cfg.TH)
+                  }
+                  return out
+              }
+
+              // Dokunulan buff ikonunu şablon olarak kaydet (yarım ölçek, 21x20)
+              private fun learnIcon(b: Bitmap, fx: Float, fy: Float): String? {
+                  val sc = b.height / 1080f
+                  val w = (Cfg.TW * 2 * sc).toInt()
+                  val h = (Cfg.TH * 2 * sc).toInt()
+                  val cx = (fx * b.width).toInt()
+                  val cy = (fy * b.height).toInt()
+                  val x0 = (cx - w / 2).coerceIn(0, b.width - w)
+                  val y0 = (cy - h / 2).coerceIn(0, b.height - h)
+                  val crop = Bitmap.createBitmap(b, x0, y0, w, h)
+                  val small = Bitmap.createScaledBitmap(crop, Cfg.TW, Cfg.TH, true)
+                  val px = IntArray(Cfg.TW * Cfg.TH)
+                  small.getPixels(px, 0, Cfg.TW, 0, 0, Cfg.TW, Cfg.TH)
+                  val bytes = ByteArray(px.size * 3)
+                  for (i in px.indices) {
+                      bytes[i * 3] = ((px[i] shr 16) and 255).toByte()
+                      bytes[i * 3 + 1] = ((px[i] shr 8) and 255).toByte()
+                      bytes[i * 3 + 2] = (px[i] and 255).toByte()
+                  }
+                  return Base64.encodeToString(bytes, Base64.NO_WRAP)
+              }
+
+              // Nişan düğmesi: pasif mi aktif mi? Konumun çevresinde iki şablonu da arar.
+              private fun analyzeNisan(b: Bitmap): FloatArray {
+                  val sc = b.height / 1080f
+                  val cx = (Cfg.NX * b.width).toInt()
+                  val cy = (Cfg.NY * b.height).toInt()
+                  val r = (103 * sc).toInt()
+                  val x0 = (cx - r).coerceAtLeast(0)
+                  val y0 = (cy - r).coerceAtLeast(0)
+                  val x1 = (cx + r).coerceAtMost(b.width)
+                  val y1 = (cy + r).coerceAtMost(b.height)
+                  val f = 0.25f / sc
+                  val rw = ((x1 - x0) * f).toInt()
+                  val rh = ((y1 - y0) * f).toInt()
+                  if (rw < Cfg.NT + 2 || rh < Cfg.NT + 2) return floatArrayOf(99f, 99f)
+                  val reg = Bitmap.createBitmap(b, x0, y0, x1 - x0, y1 - y0)
+                  val small = Bitmap.createScaledBitmap(reg, rw, rh, true)
+                  val px = IntArray(rw * rh)
+                  small.getPixels(px, 0, rw, 0, 0, rw, rh)
+                  return floatArrayOf(
+                      slide(px, rw, rh, tplNP, Cfg.NT, Cfg.NT),
+                      slide(px, rw, rh, tplNA, Cfg.NT, Cfg.NT)
+                  )
+              }
+
+              private fun scan() {
+                  val now = SystemClock.elapsedRealtime()
+                  if (busy && now - busySince > 3000L) busy = false
+                  if (busy) return
+                  busy = true
+                  busySince = now
+                  val tpls = tplBuff
+                  val lp = learnPt
+                  val doLearn = lp != null && now >= learnAfter
+                  takeScreenshot(Display.DEFAULT_DISPLAY, worker, object : TakeScreenshotCallback {
+                      override fun onSuccess(r: ScreenshotResult) {
+                          try {
+                              val hb = r.hardwareBuffer
+                              val bmp = Bitmap.wrapHardwareBuffer(hb, r.colorSpace)
+                                  ?.copy(Bitmap.Config.ARGB_8888, false)
+                              hb.close()
+                              if (bmp == null) {
+                                  handler.post { busy = false }
+                                  return
+                              }
+                              // Nişan önce çözülür ve hemen uygulanır, buff analizi beklemez
+                              val ns = analyzeNisan(bmp)
+                              handler.post { applyNisan(ns, now) }
+                              val bs = analyzeBuffs(bmp, tpls)
+                              var learned: String? = null
+                              if (doLearn && lp != null) learned = learnIcon(bmp, lp[0], lp[1])
+                              handler.post {
+                                  busy = false
+                                  if (learned != null) {
+                                      val li = learnIdx
+                                      prefs.edit().putString("s" + profile + "_" + li + "_t", learned).commit()
+                                      useTimer[li] = false
+                                      noSee[li] = 0
+                                      loadCfg()
+                                      learnPt = null
+                                      toast(Cfg.SNAME[profile][li] + " ikonu öğrenildi")
+                                  }
+                                  applyScan(bs)
+                              }
+                          } catch (ex: Exception) {
+                              handler.post { busy = false }
+                          }
+                      }
+
+                      override fun onFailure(code: Int) {
+                          handler.post { busy = false }
+                      }
+                  })
+              }
+
+              // Nişan durumunu hemen işle: pasifse bekletmeden bas
+              private fun applyNisan(ns: FloatArray, shotAt: Long) {
+                  scoreP = ns[0]
+                  scoreA = ns[1]
+                  nisanState = if (minOf(scoreP, scoreA) > 40f) 0
+                  else if (scoreP < scoreA - 3f) 1
+                  else if (scoreA < scoreP - 3f) 2
+                  else 0
+                  nisanShotAt = shotAt
+                  updateStatus()
+                  if (running) decide(SystemClock.elapsedRealtime())
+              }
+
+              private fun applyScan(bs: FloatArray) {
+                  val now = SystemClock.elapsedRealtime()
+                  for (b in 0 until nSk) {
+                      scoreB[b] = bs[b]
+                      val tpl = tplBuff[b]
+                      val p: Boolean
+                      if (tpl != null && !useTimer[b]) {
+                          // sol üstteki buff ikonunu izle
+                          p = bs[b] < thr[b]
+                          if (p) {
+                              noSee[b] = 0
+                              verifyAt[b] = 0L
+                          } else if (verifyAt[b] > 0L && now >= verifyAt[b]) {
+                              // basıldı ama ikon çıkmadı: 3 kez üst üste olursa süreye geç
+                              verifyAt[b] = 0L
+                              noSee[b]++
+                              if (noSee[b] >= 3) {
+                                  useTimer[b] = true
+                                  toast(Cfg.SNAME[profile][b] + ": ikon görünmedi, süreye göre yenilenecek")
+                              }
+                          }
+                      } else {
+                          p = lastCast[b] > 0L && now - lastCast[b] < secs[b] * 1000L
+                      }
+                      present[b] = p
+                      if (p) miss[b] = 0 else miss[b]++
+                  }
+                  updateStatus()
+                  if (running) decide(now)
+              }
+
+              // ---------------- karar: görülen anda hemen bas ----------------
+
+              private fun decide(now: Long) {
+                  if (!inGame) return
+                  // 1) Nişan pasif oldu: anında tekrar aç (öncelikli). Basıştan sonra çekilmiş
+                  //    bir görüntü pasif gösteriyorsa bas; eski görüntüyle çift basılmaz.
+                  if (nisanOn && nisanState == 1 && nisanShotAt > lastNisan + 200L && now - lastNisan > nisanGap) {
+                      tapFrac(Cfg.NX, Cfg.NY)
+                      lastNisan = now
+                      nisanCount++
+                      return
+                  }
+                  if (now - lastTap < 90L) return
+                  // 2) Bir beceri (buff) bitti: anında yenile
+                  if (now >= skillLock) {
+                      for (b in 0 until nSk) {
+                          if (skillOn[b] && bx[b] >= 0f && miss[b] >= 1 && now - lastCast[b] > recastGap) {
+                              tapFrac(bx[b], by[b])
+                              lastCast[b] = now
+                              verifyAt[b] = now + 2500L
+                              miss[b] = 0
+                              skillLock = now + castLockMs
+                              skillCount++
+                              return
+                          }
+                      }
+                  }
+              }
+
+              // ---------------- döngüler ----------------
+
+              // sürekli tarama (ekran görüntüsü sınırı izin verdiği kadar hızlı)
+              private val scanLoop = object : Runnable {
+                  override fun run() {
+                      if (Build.VERSION.SDK_INT >= 30 && inGame) scan()
+                      handler.postDelayed(this, if (running) 30L else 600L)
+                  }
+              }
+
+              private val pickLoop = object : Runnable {
+                  override fun run() {
+                      if (!running) return
+                      val now = SystemClock.elapsedRealtime()
+                      var wait = pickMs.toLong()
+                      if (pickOn) {
+                          if (now - lastTap < 120L) {
+                              wait = 60L
+                          } else {
+                              tapFrac(Cfg.HX, Cfg.HY)
+                              pickCount++
+                          }
+                      }
+                      handler.postDelayed(this, wait)
+                  }
+              }
+
+              // Hangi uygulama önde? Sadece seçili oyundaysa pencereyi göster ve çalış.
+              private fun topAppPkg(): String? {
+                  try {
+                      val ws = windows
+                      if (ws == null || ws.isEmpty()) return null
+                      var best: AccessibilityWindowInfo? = null
+                      for (wi in ws) {
+                          if (wi.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
+                          if (wi.isActive) {
+                              best = wi
+                              break
+                          }
+                          if (best == null || wi.layer > best.layer) best = wi
+                      }
+                      val root = best?.root ?: return null
+                      return root.packageName?.toString()
+                  } catch (ex: Exception) {
+                      return null
+                  }
+              }
+
+              // Pencere yeniden eklenmesi gerekirse (sistem kaldırdıysa) geri ekle
+              private fun ensurePanel() {
+                  val v = panel ?: return
+                  val w = wm ?: return
+                  val lp = panelLp ?: return
+                  if (!v.isAttachedToWindow) {
+                      try {
+                          w.addView(v, lp)
+                      } catch (ex: Exception) {
+                      }
+                  }
+              }
+
+              private val gameLoop = object : Runnable {
+                  override fun run() {
+                      gamePkg = prefs.getString("game_pkg", "") ?: ""
+                      val pkg = topAppPkg() ?: evPkg
+                      val here = gamePkg.isNotEmpty() && pkg == gamePkg
+                      if (here) outCount = 0 else if (outCount < 100) outCount++
+                      // Oyundan çıkış: üst üste 2 kontrolde (~1,2 sn) oyun görünmezse gizle
+                      val target = if (here) true else if (outCount >= 2) false else inGame
+                      if (target != inGame) {
+                          inGame = target
+                          if (target) {
+                              ensurePanel()
+                              panel?.visibility = View.VISIBLE
+                              loadCfg()
+                              updateStatus()
+                              if (resumeAfter) {
+                                  resumeAfter = false
+                                  handler.postDelayed({
+                                      if (inGame && !running) toggle()
+                                  }, 1200L)
+                              }
+                          } else {
+                              resumeAfter = running
+                              panel?.visibility = View.GONE
+                              stopAll()
+                              showMenu(false)
+                              learnPt = null
+                          }
+                      } else if (inGame) {
+                          ensurePanel()
+                      }
+                      handler.postDelayed(this, 600L)
+                  }
+              }
+
+              private val ticker = object : Runnable {
+                  override fun run() {
+                      if (!running) return
+                      val s = (SystemClock.elapsedRealtime() - startAt) / 1000
+                      timeText?.text = "%s %02d:%02d · N%d B%d T%d".format(Cfg.PNAME[profile], s / 60, s % 60, nisanCount, skillCount, pickCount)
+                      handler.postDelayed(this, 1000)
+                  }
+              }
+
+              private fun updateStatus() {
+                  for (n in 0 until panelIcons.size) {
+                      val idx = panelIdx[n]
+                      val on = if (idx >= 0) present[idx] else if (idx == -1) (nisanState == 2) else running
+                      panelIcons[n].alpha = if (on) 1f else 0.35f
+                  }
+              }
+
+              private fun stopAll() {
+                  running = false
+                  handler.removeCallbacks(pickLoop)
+                  handler.removeCallbacks(ticker)
+                  startBtn?.text = "▶"
+                  timeText?.text = Cfg.PNAME[profile]
+              }
+
+              fun toggle() {
+                  if (running) {
+                      stopAll()
+                      return
+                  }
+                  if (Build.VERSION.SDK_INT < 30) {
+                      toast("Android 11 veya üstü gerekli")
+                      return
+                  }
+                  if (!inGame) {
+                      toast("Önce seçili oyuna gir")
+                      return
+                  }
+                  loadCfg()
+                  running = true
+                  nisanCount = 0
+                  skillCount = 0
+                  pickCount = 0
+                  lastNisan = 0L
+                  skillLock = 0L
+                  for (b in 0 until MAXS) {
+                      miss[b] = 0
+                      lastCast[b] = 0L
+                      useTimer[b] = false
+                      noSee[b] = 0
+                      verifyAt[b] = 0L
+                  }
+                  startAt = SystemClock.elapsedRealtime()
+                  startBtn?.text = "■"
+                  handler.post(pickLoop)
+                  handler.post(ticker)
+                  scan()
+              }
+
+              // ---------------- arayüz yardımcıları ----------------
+
+              private fun dpx(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+              private fun shape(fill: Int, stroke: Int, rDp: Int, strokeDp: Int): GradientDrawable {
+                  val g = GradientDrawable()
+                  g.setColor(fill)
+                  g.cornerRadius = dpx(rDp).toFloat()
+                  if (strokeDp > 0) g.setStroke(dpx(strokeDp), stroke)
+                  return g
+              }
+
+              // taş görünümlü düğme (koyu zemin, mavi kenar)
+              private fun stoneBtn(label: String, sp: Float, onClick: () -> Unit): TextView {
+                  val t = TextView(this)
+                  t.text = label
+                  t.textSize = sp
+                  t.setTextColor(cText)
+                  t.gravity = Gravity.CENTER
+                  t.setTypeface(t.typeface, Typeface.BOLD)
+                  t.background = shape(cStone, cStroke, 8, 1)
+                  t.setOnClickListener { onClick() }
+                  return t
+              }
+
+              private fun styledSwitch(label: String, init: Boolean, onChange: (Boolean) -> Unit): Switch {
+                  val sw = Switch(this)
+                  sw.text = label
+                  sw.setTextColor(cText)
+                  sw.textSize = 13f
+                  sw.isChecked = init
+                  val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+                  sw.thumbTintList = ColorStateList(states, intArrayOf(cAccent, 0xFF6B7A8E.toInt()))
+                  sw.trackTintList = ColorStateList(states, intArrayOf(0x662F9BFF, 0x44FFFFFF))
+                  sw.setPadding(0, dpx(5), 0, dpx(5))
+                  sw.setOnCheckedChangeListener { _, on -> onChange(on) }
+                  return sw
+              }
+
+              private fun sectionHead(t: String): TextView {
+                  val h = TextView(this)
+                  h.text = t
+                  h.textSize = 12f
+                  h.setTypeface(h.typeface, Typeface.BOLD)
+                  h.setTextColor(cCyan)
+                  h.setPadding(0, dpx(10), 0, dpx(2))
+                  return h
+              }
+
+              private fun drag(handle: View, target: View, lp: WindowManager.LayoutParams) {
+                  var sx = 0f
+                  var sy = 0f
+                  var ox = 0
+                  var oy = 0
+                  handle.setOnTouchListener { _, e ->
+                      if (e.action == MotionEvent.ACTION_DOWN) {
+                          sx = e.rawX
+                          sy = e.rawY
+                          ox = lp.x
+                          oy = lp.y
+                      } else if (e.action == MotionEvent.ACTION_MOVE) {
+                          lp.x = ox + (e.rawX - sx).toInt()
+                          lp.y = oy + (e.rawY - sy).toInt()
+                          try {
+                              wm?.updateViewLayout(target, lp)
+                          } catch (ex: Exception) {
+                          }
+                      }
+                      true
+                  }
+              }
+
+              private fun testRow(a: String, fa: () -> Unit, b: String, fb: () -> Unit): LinearLayout {
+                  val row = LinearLayout(this)
+                  row.orientation = LinearLayout.HORIZONTAL
+                  val ba = stoneBtn(a, 12f, fa)
+                  val bb = stoneBtn(b, 12f, fb)
+                  val p1 = LinearLayout.LayoutParams(0, dpx(40), 1f)
+                  p1.topMargin = dpx(4)
+                  p1.rightMargin = dpx(3)
+                  val p2 = LinearLayout.LayoutParams(0, dpx(40), 1f)
+                  p2.topMargin = dpx(4)
+                  p2.leftMargin = dpx(3)
+                  row.addView(ba, p1)
+                  row.addView(bb, p2)
+                  return row
+              }
+
+              // Tam ekran dokunma katmanı: dokunulan noktayı ekran oranı olarak verir
+              private fun pickPoint(msg: String, done: (Float, Float) -> Unit) {
+                  val w = wm ?: return
+                  showMenu(false)
+                  val v = FrameLayout(this)
+                  v.setBackgroundColor(0x99000000.toInt())
+                  val tv = TextView(this)
+                  tv.text = msg
+                  tv.textSize = 18f
+                  tv.setTextColor(cText)
+                  tv.gravity = Gravity.CENTER
+                  tv.setPadding(dpx(16), dpx(10), dpx(16), dpx(10))
+                  tv.background = shape(cBg, cAccent, 12, 2)
+                  v.addView(tv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+                  val lp = WindowManager.LayoutParams(
+                      ViewGroup.LayoutParams.MATCH_PARENT,
+                      ViewGroup.LayoutParams.MATCH_PARENT,
+                      WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                      PixelFormat.TRANSLUCENT
+                  )
+                  v.setOnTouchListener { _, e ->
+                      if (e.action == MotionEvent.ACTION_UP) {
+                          val sc = screen()
+                          val fx = (e.rawX / sc[0]).coerceIn(0f, 1f)
+                          val fy = (e.rawY / sc[1]).coerceIn(0f, 1f)
+                          removeSafe(v)
+                          handler.post {
+                              done(fx, fy)
+                              showMenu(true)
+                          }
+                      }
+                      true
+                  }
+                  w.addView(v, lp)
+              }
+
+              // ---------------- kontrol menüsü ----------------
+
+              private fun btnRow(items: List<Pair<String, () -> Unit>>): LinearLayout {
+                  val row = LinearLayout(this)
+                  row.orientation = LinearLayout.HORIZONTAL
+                  for (it in items) {
+                      val b = stoneBtn(it.first, 11f, it.second)
+                      val p = LinearLayout.LayoutParams(0, dpx(36), 1f)
+                      p.topMargin = dpx(4)
+                      p.leftMargin = dpx(2)
+                      p.rightMargin = dpx(2)
+                      row.addView(b, p)
+                  }
+                  return row
+              }
+
+              private fun skillInfo(i: Int): String {
+                  if (Cfg.SFIXED[profile][i]) return "Yuva sabit  ·  sol üst ikon takibi açık"
+                  val y = if (bx[i] >= 0f) "Yuva: ayarlı" else "Yuva: ayarlanmadı"
+                  val ic = if (tplBuff[i] == null) "ikon yok, her " + secs[i] + " sn yeniler"
+                  else if (useTimer[i]) "ikon görünmedi, her " + secs[i] + " sn yeniler"
+                  else "sol üst ikon takibi açık"
+                  return y + "  ·  " + ic
+              }
+
+              private fun cardBg(on: Boolean): GradientDrawable =
+                  if (on) shape(0xFF0A1B33.toInt(), cAccent, 8, 2) else shape(0xFF0A1220.toInt(), 0xFF14263F.toInt(), 8, 1)
+
+              private fun iconSwitch(b64: String, label: String, init: Boolean, onChange: (Boolean) -> Unit): LinearLayout {
+                  val row = LinearLayout(this)
+                  row.orientation = LinearLayout.HORIZONTAL
+                  row.gravity = Gravity.CENTER_VERTICAL
+                  val img = ImageView(this)
+                  img.setImageDrawable(iconOf(b64))
+                  img.alpha = if (init) 1f else 0.35f
+                  row.addView(img, LinearLayout.LayoutParams(dpx(34), dpx(34)))
+                  val sw = styledSwitch(label, init) { on ->
+                      img.alpha = if (on) 1f else 0.35f
+                      onChange(on)
+                  }
+                  val p = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                  p.leftMargin = dpx(8)
+                  row.addView(sw, p)
+                  return row
+              }
+
+              private fun buildMenu(): View {
+                  val sc = screen()
+                  val w = minOf(dpx(310), (sc[0] * 0.46f).toInt())
+
+                  val root = LinearLayout(this)
+                  root.orientation = LinearLayout.VERTICAL
+                  root.background = shape(cBg, cAccent, 14, 2)
+                  root.setPadding(dpx(10), dpx(8), dpx(10), dpx(8))
+
+                  val row = LinearLayout(this)
+                  row.orientation = LinearLayout.HORIZONTAL
+                  row.gravity = Gravity.CENTER_VERTICAL
+                  val logo = ImageView(this)
+                  logo.setImageResource(R.drawable.ic_logo)
+                  row.addView(logo, LinearLayout.LayoutParams(dpx(28), dpx(28)))
+                  val title = TextView(this)
+                  title.text = "KONTROL"
+                  title.textSize = 14f
+                  title.letterSpacing = 0.08f
+                  title.setTypeface(title.typeface, Typeface.BOLD)
+                  title.setTextColor(cCyan)
+                  title.setPadding(dpx(8), 0, 0, 0)
+                  row.addView(title, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                  val close = stoneBtn("✕", 14f) { showMenu(false) }
+                  row.addView(close, LinearLayout.LayoutParams(dpx(40), dpx(32)))
+                  root.addView(row)
+
+                  val col = LinearLayout(this)
+                  col.orientation = LinearLayout.VERTICAL
+
+                  col.addView(sectionHead("OYUN"))
+                  val gn = TextView(this)
+                  gn.text = (prefs.getString("game_name", "") ?: "") + "  (yalnızca bu oyunda çalışır)"
+                  gn.textSize = 12f
+                  gn.setTextColor(cText)
+                  col.addView(gn)
+
+                  // --- karakter seçimi: her kartta o karakterin becerileri, açık olanlar parlak ---
+                  col.addView(sectionHead("KARAKTER (seçilen aktif olur)"))
+                  val strip = Array(Cfg.PNAME.size) { arrayOfNulls<ImageView>(MAXS) }
+                  val prow = LinearLayout(this)
+                  prow.orientation = LinearLayout.HORIZONTAL
+                  for (k in 0 until Cfg.PNAME.size) {
+                      val on = (k == profile)
+                      val card = LinearLayout(this)
+                      card.orientation = LinearLayout.VERTICAL
+                      card.gravity = Gravity.CENTER_HORIZONTAL
+                      card.setPadding(dpx(4), dpx(6), dpx(4), dpx(6))
+                      card.background = if (on) shape(cAccent, 0xFF9ADBFF.toInt(), 10, 2) else shape(cStone, cStroke, 10, 1)
+                      val nm = TextView(this)
+                      nm.text = Cfg.PNAME[k]
+                      nm.textSize = 13f
+                      nm.setTypeface(nm.typeface, Typeface.BOLD)
+                      nm.setTextColor(if (on) 0xFF04101F.toInt() else cText)
+                      nm.gravity = Gravity.CENTER
+                      card.addView(nm)
+                      val sr = LinearLayout(this)
+                      sr.orientation = LinearLayout.HORIZONTAL
+                      sr.gravity = Gravity.CENTER
+                      sr.setPadding(0, dpx(4), 0, 0)
+                      for (i in 0 until Cfg.SNAME[k].size) {
+                          val iv = ImageView(this)
+                          iv.setImageDrawable(iconOf(Cfg.SICON[k][i]))
+                          iv.alpha = if (skillEnabled(k, i)) 1f else 0.3f
+                          sr.addView(iv, LinearLayout.LayoutParams(dpx(20), dpx(20)))
+                          strip[k][i] = iv
+                      }
+                      card.addView(sr)
+                      card.setOnClickListener {
+                          if (profile != k) {
+                              stopAll()
+                              learnPt = null
+                              prefs.edit().putInt("profile", k).commit()
+                              loadCfg()
+                              showMenu(false)
+                              showMenu(true)
+                          }
+                      }
+                      val p = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                      p.leftMargin = dpx(3)
+                      p.rightMargin = dpx(3)
+                      prow.addView(card, p)
+                  }
+                  col.addView(prow)
+
+                  // --- ortak ---
+                  col.addView(sectionHead("ORTAK"))
+                  col.addView(iconSwitch(Cfg.IC_NISAN, "Nişan: pasif olunca hemen aç", nisanOn) { on ->
+                      nisanOn = on
+                      prefs.edit().putBoolean("nisan", on).commit()
+                      rebuildPanelIcons()
+                  })
+                  col.addView(iconSwitch(Cfg.IC_EL, "Oto toplama (el düğmesi)", pickOn) { on ->
+                      pickOn = on
+                      prefs.edit().putBoolean("pick", on).commit()
+                      rebuildPanelIcons()
+                  })
+                  val pl = TextView(this)
+                  pl.textSize = 12f
+                  pl.setTextColor(cText)
+                  pl.setPadding(0, dpx(6), 0, 0)
+                  pl.text = "Toplama aralığı: " + pickMs + " ms"
+                  col.addView(pl)
+                  val pbar = SeekBar(this)
+                  pbar.max = 13
+                  pbar.progress = ((pickMs - 200) / 100).coerceIn(0, 13)
+                  pbar.progressTintList = ColorStateList.valueOf(cAccent)
+                  pbar.thumbTintList = ColorStateList.valueOf(cCyan)
+                  pbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                      override fun onProgressChanged(bar: SeekBar?, p: Int, fromUser: Boolean) {
+                          pickMs = 200 + p * 100
+                          pl.text = "Toplama aralığı: " + pickMs + " ms"
+                          prefs.edit().putInt("pickms", pickMs).commit()
+                      }
+
+                      override fun onStartTrackingTouch(bar: SeekBar?) {}
+
+                      override fun onStopTrackingTouch(bar: SeekBar?) {}
+                  })
+                  col.addView(pbar)
+                  col.addView(btnRow(listOf(
+                      Pair("Nişan dene", {
+                          tapFrac(Cfg.NX, Cfg.NY)
+                          toast("Nişan düğmesine basıldı")
+                      }),
+                      Pair("Topla dene", {
+                          tapFrac(Cfg.HX, Cfg.HY)
+                          toast("El düğmesine basıldı")
+                      })
+                  )))
+
+                  // --- beceriler (seçili karaktere göre) ---
+                  col.addView(sectionHead("BECERİLER: " + Cfg.PNAME[profile].uppercase()))
+                  for (i in 0 until nSk) {
+                      val fixed = Cfg.SFIXED[profile][i]
+                      val pf = profile
+                      val card = LinearLayout(this)
+                      card.orientation = LinearLayout.VERTICAL
+                      card.background = cardBg(skillOn[i])
+                      card.setPadding(dpx(8), dpx(6), dpx(8), dpx(6))
+
+                      val head = LinearLayout(this)
+                      head.orientation = LinearLayout.HORIZONTAL
+                      head.gravity = Gravity.CENTER_VERTICAL
+                      val img = ImageView(this)
+                      img.setImageDrawable(skillIcon(i))
+                      img.alpha = if (skillOn[i]) 1f else 0.35f
+                      head.addView(img, LinearLayout.LayoutParams(dpx(40), dpx(40)))
+                      val sw = styledSwitch(Cfg.SNAME[pf][i] + ": bitince bas", skillOn[i]) { on ->
+                          skillOn[i] = on
+                          prefs.edit().putBoolean("s" + pf + "_" + i + "_on", on).commit()
+                          img.alpha = if (on) 1f else 0.35f
+                          card.background = cardBg(on)
+                          strip[pf][i]?.alpha = if (on) 1f else 0.3f
+                          rebuildPanelIcons()
+                      }
+                      val sp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                      sp.leftMargin = dpx(8)
+                      head.addView(sw, sp)
+                      card.addView(head)
+
+                      val info = TextView(this)
+                      info.textSize = 11f
+                      info.setTextColor(cMuted)
+                      info.text = skillInfo(i)
+                      card.addView(info)
+
+                      val test = Pair("Dene", {
+                          if (bx[i] < 0f) {
+                              toast("Önce yuvayı ayarla")
+                          } else {
+                              tapFrac(bx[i], by[i])
+                              toast(Cfg.SNAME[pf][i] + " basıldı")
+                          }
+                      })
+                      if (fixed) {
+                          card.addView(btnRow(listOf(test)))
+                      } else {
+                          card.addView(btnRow(listOf(
+                              Pair("Yuva ayarla", {
+                                  pickPoint(Cfg.SNAME[pf][i] + " beceri düğmesine dokun") { fx, fy ->
+                                      prefs.edit().putFloat("s" + pf + "_" + i + "_x", fx).putFloat("s" + pf + "_" + i + "_y", fy).commit()
+                                      bx[i] = fx
+                                      by[i] = fy
+                                      toast("Yuva kaydedildi")
+                                      rebuildPanelIcons()
+                                  }
+                              }),
+                              Pair("İkon öğret", {
+                                  pickPoint(Cfg.SNAME[pf][i] + " açıkken sol üstteki ikonuna dokun") { fx, fy ->
+                                      learnPt = floatArrayOf(fx, fy)
+                                      learnIdx = i
+                                      learnAfter = SystemClock.elapsedRealtime() + 500L
+                                      toast("İkon öğreniliyor...")
+                                  }
+                              })
+                          )))
+                          card.addView(btnRow(listOf(
+                              test,
+                              Pair("İkonu sıfırla", {
+                                  prefs.edit().remove("s" + pf + "_" + i + "_t").commit()
+                                  useTimer[i] = false
+                                  noSee[i] = 0
+                                  loadCfg()
+                                  info.text = skillInfo(i)
+                                  toast("Varsayılan ikona dönüldü")
+                              })
+                          )))
+                          val sl = TextView(this)
+                          sl.textSize = 11f
+                          sl.setTextColor(cText)
+                          sl.setPadding(0, dpx(6), 0, 0)
+                          sl.text = "İkon görünmezse yenileme: her " + secs[i] + " sn"
+                          card.addView(sl)
+                          val sk = SeekBar(this)
+                          sk.max = 29
+                          sk.progress = ((secs[i] / 10) - 1).coerceIn(0, 29)
+                          sk.progressTintList = ColorStateList.valueOf(cAccent)
+                          sk.thumbTintList = ColorStateList.valueOf(cCyan)
+                          sk.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                              override fun onProgressChanged(bar: SeekBar?, p: Int, fromUser: Boolean) {
+                                  secs[i] = (p + 1) * 10
+                                  sl.text = "İkon görünmezse yenileme: her " + secs[i] + " sn"
+                                  prefs.edit().putInt("s" + pf + "_" + i + "_sec", secs[i]).commit()
+                                  info.text = skillInfo(i)
+                              }
+
+                              override fun onStartTrackingTouch(bar: SeekBar?) {}
+
+                              override fun onStopTrackingTouch(bar: SeekBar?) {}
+                          })
+                          card.addView(sk)
+                      }
+                      val cp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                      cp.topMargin = dpx(6)
+                      col.addView(card, cp)
+                  }
+
+                  val sv = ScrollView(this)
+                  sv.addView(col)
+                  root.addView(sv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (sc[1] * 0.62f).toInt().coerceAtLeast(dpx(140))))
+
+                  val lp = menuLp ?: WindowManager.LayoutParams(
+                      w,
+                      WindowManager.LayoutParams.WRAP_CONTENT,
+                      WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                      PixelFormat.TRANSLUCENT
+                  ).also {
+                      it.gravity = Gravity.TOP or Gravity.START
+                      it.x = (sc[0] - w) / 2
+                      it.y = dpx(56)
+                      menuLp = it
+                  }
+                  drag(title, root, lp)
+                  return root
+              }
+
+              private fun showMenu(on: Boolean) {
+                  val w = wm ?: return
+                  if (on && !menuShown) {
+                      loadCfg()
+                      removeSafe(menu)
+                      val fresh = buildMenu()
+                      val lp = menuLp ?: return
+                      menu = fresh
+                      w.addView(fresh, lp)
+                      menuShown = true
+                  } else if (!on && menuShown) {
+                      removeSafe(menu)
+                      menuShown = false
+                  }
+              }
+
+              // ---------------- servis ----------------
+
+              override fun onServiceConnected() {
+                  prefs = getSharedPreferences("ayar", MODE_PRIVATE)
+                  val w = getSystemService(WINDOW_SERVICE) as WindowManager
+                  wm = w
+                  removeSafe(panel)
+                  removeSafe(menu)
+                  menuShown = false
+                  loadCfg()
+                  val d = resources.displayMetrics.density
+                  fun dp(v: Int) = (v * d).toInt()
+
+                  // yüzen pencere: küçük, mavi-siyah, logodan sürüklenir, logoya dokununca küçülür
+                  val scr = screen()
+                  val box = LinearLayout(this)
+                  box.orientation = LinearLayout.VERTICAL
+                  box.background = shape(cBg, cAccent, 14, 2)
+                  box.setPadding(dp(6), dp(5), dp(6), dp(5))
+
+                  val top = LinearLayout(this)
+                  top.orientation = LinearLayout.HORIZONTAL
+                  top.gravity = Gravity.CENTER_VERTICAL
+                  val logo = ImageView(this)
+                  logo.setImageResource(R.drawable.ic_logo)
+                  top.addView(logo, LinearLayout.LayoutParams(dp(34), dp(34)))
+
+                  val ctl = LinearLayout(this)
+                  ctl.orientation = LinearLayout.HORIZONTAL
+                  val sBtn = stoneBtn("▶", 16f) { toggle() }
+                  startBtn = sBtn
+                  val mBtn = stoneBtn("☰", 16f) { showMenu(!menuShown) }
+                  for (bv in listOf(sBtn, mBtn)) {
+                      val p = LinearLayout.LayoutParams(dp(40), dp(34))
+                      p.leftMargin = dp(5)
+                      ctl.addView(bv, p)
+                  }
+                  top.addView(ctl)
+                  box.addView(top)
+
+                  val info = LinearLayout(this)
+                  info.orientation = LinearLayout.VERTICAL
+                  info.setPadding(dp(2), dp(3), 0, 0)
+                  val tt = TextView(this)
+                  tt.textSize = 11f
+                  tt.setTextColor(cCyan)
+                  timeText = tt
+                  tt.text = Cfg.PNAME[profile]
+                  val st = TextView(this)
+                  st.textSize = 10f
+                  st.setTextColor(cMuted)
+                  st.maxLines = 3
+                  st.maxWidth = dp(230)
+                  statusText = st
+                  st.text = "parlak = aktif · soluk = bekliyor"
+                  val ir = LinearLayout(this)
+                  ir.orientation = LinearLayout.HORIZONTAL
+                  ir.setPadding(0, dp(4), 0, dp(2))
+                  iconRow = ir
+                  info.addView(tt)
+                  info.addView(ir)
+                  info.addView(st)
+                  box.addView(info)
+
+                  val lp = WindowManager.LayoutParams(
+                      WindowManager.LayoutParams.WRAP_CONTENT,
+                      WindowManager.LayoutParams.WRAP_CONTENT,
+                      WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                      PixelFormat.TRANSLUCENT
+                  )
+                  lp.gravity = Gravity.TOP or Gravity.START
+                  // Pencerenin son konumu ve küçültme durumu hatırlanır
+                  lp.x = prefs.getInt("px", (scr[0] - dp(190)) / 2).coerceIn(0, (scr[0] - dp(60)).coerceAtLeast(0))
+                  lp.y = prefs.getInt("py", dp(4)).coerceIn(0, (scr[1] - dp(60)).coerceAtLeast(0))
+                  var sx = 0f
+                  var sy = 0f
+                  var ox = 0
+                  var oy = 0
+                  var moved = false
+                  var collapsed = prefs.getBoolean("col", false)
+                  logo.setOnTouchListener { _, e ->
+                      if (e.action == MotionEvent.ACTION_DOWN) {
+                          sx = e.rawX
+                          sy = e.rawY
+                          ox = lp.x
+                          oy = lp.y
+                          moved = false
+                      } else if (e.action == MotionEvent.ACTION_MOVE) {
+                          val dx = e.rawX - sx
+                          val dy = e.rawY - sy
+                          if (abs(dx) > dp(6) || abs(dy) > dp(6)) moved = true
+                          if (moved) {
+                              lp.x = ox + dx.toInt()
+                              lp.y = oy + dy.toInt()
+                              try {
+                                  w.updateViewLayout(box, lp)
+                              } catch (ex: Exception) {
+                              }
+                          }
+                      } else if (e.action == MotionEvent.ACTION_UP) {
+                          if (moved) {
+                              prefs.edit().putInt("px", lp.x).putInt("py", lp.y).commit()
+                          }
+                          if (!moved) {
+                              collapsed = !collapsed
+                              prefs.edit().putBoolean("col", collapsed).commit()
+                              ctl.visibility = if (collapsed) View.GONE else View.VISIBLE
+                              info.visibility = if (collapsed) View.GONE else View.VISIBLE
+                              try {
+                                  w.updateViewLayout(box, lp)
+                              } catch (ex: Exception) {
+                              }
+                          }
+                      }
+                      true
+                  }
+                  if (collapsed) {
+                      ctl.visibility = View.GONE
+                      info.visibility = View.GONE
+                  }
+                  box.visibility = View.GONE
+                  panelLp = lp
+                  w.addView(box, lp)
+                  panel = box
+                  rebuildPanelIcons()
+
+                  handler.removeCallbacks(scanLoop)
+                  handler.removeCallbacks(gameLoop)
+                  handler.post(scanLoop)
+                  handler.post(gameLoop)
+                  inst = this
+              }
+
+              override fun onAccessibilityEvent(e: AccessibilityEvent?) {
+                  if (e != null && e.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                      val p = e.packageName?.toString()
+                      if (p != null && p != packageName && p != "com.android.systemui") evPkg = p
+                  }
+              }
+
+              override fun onInterrupt() {
+                  stopAll()
+              }
+
+              override fun onDestroy() {
+                  stopAll()
+                  handler.removeCallbacks(scanLoop)
+                  handler.removeCallbacks(gameLoop)
+                  inst = null
+                  removeSafe(panel)
+                  removeSafe(menu)
+                  worker.shutdown()
+                  super.onDestroy()
+              }
+          }
+          EOF
+
+      - name: APK derle
+        working-directory: proj
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --console=plain 2>&1 | tee ../build.log
+
+      - name: Hata ozeti
+        if: failure()
+        run: |
+          {
+            echo '### HATA OZETI'
+            echo '```'
+            grep -n -E "^e: |error:|What went wrong|Execution failed|Could not|Caused by|AAPT|Unresolved" -A4 build.log | head -60 || true
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-log
+          path: build.log
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tiklayici-apk
+          path: proj/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
