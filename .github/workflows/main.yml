@@ -1,0 +1,546 @@
+name: Metin2 MoonCheat Build
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Proje dosyalarini olustur
+        run: |
+          mkdir -p proj/app/src/main/java/com/moon/cheat
+          mkdir -p proj/app/src/main/res/values
+          mkdir -p proj/app/src/main/res/layout
+          mkdir -p proj/app/src/main/res/drawable
+
+          cat > proj/settings.gradle <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "MoonCheat"
+          include ':app'
+          EOF
+
+          cat > proj/gradle.properties <<'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx3g
+          EOF
+
+          cat > proj/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+          }
+          EOF
+
+          cat > proj/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.moon.cheat'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.moon.cheat'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = '17' }
+          }
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.12.0'
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.11.0'
+              implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+          }
+          EOF
+
+          cat > proj/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application
+                  android:allowBackup="true"
+                  android:label="MoonCheat M2"
+                  android:theme="@style/AppTheme"
+                  android:usesCleartextTraffic="true">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > proj/app/src/main/res/values/colors.xml <<'EOF'
+          <resources>
+              <color name="bg_dark">#050A14</color>
+              <color name="bg_panel">#0A1428</color>
+              <color name="bg_card">#101E3A</color>
+              <color name="accent_blue">#00BFFF</color>
+              <color name="accent_cyan">#00FFFF</color>
+              <color name="text_light">#E0F7FF</color>
+              <color name="text_dim">#6B8FB5</color>
+              <color name="btn_green">#00C853</color>
+              <color name="btn_red">#FF1744</color>
+              <color name="btn_blue">#2979FF</color>
+          </resources>
+          EOF
+
+          cat > proj/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+                  <item name="colorPrimary">@color/accent_blue</item>
+                  <item name="colorPrimaryVariant">@color/bg_panel</item>
+                  <item name="colorOnPrimary">#000000</item>
+                  <item name="android:statusBarColor">@color/bg_dark</item>
+                  <item name="android:navigationBarColor">@color/bg_dark</item>
+                  <item name="android:windowBackground">@color/bg_dark</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > proj/app/src/main/res/layout/activity_main.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_dark">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="16dp">
+
+                  <TextView
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="⚡ MOON CHEAT ⚡"
+                      android:textColor="@color/accent_cyan"
+                      android:textSize="26sp"
+                      android:textStyle="bold"
+                      android:gravity="center"
+                      android:paddingTop="8dp"
+                      android:paddingBottom="4dp"
+                      android:letterSpacing="0.1"/>
+
+                  <TextView
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="Metin2 Mobile • destroyerr666"
+                      android:textColor="@color/text_dim"
+                      android:textSize="12sp"
+                      android:gravity="center"
+                      android:paddingBottom="20dp"/>
+
+                  <TextView
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="🎮 OYUN PAKETİ"
+                      android:textColor="@color/accent_blue"
+                      android:textSize="13sp"
+                      android:textStyle="bold"
+                      android:paddingBottom="6dp"/>
+
+                  <EditText
+                      android:id="@+id/etPackage"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:hint="com.metin2.mobil"
+                      android:text="com.metin2"
+                      android:textColor="@color/text_light"
+                      android:textColorHint="@color/text_dim"
+                      android:backgroundTint="@color/accent_blue"
+                      android:inputType="text"
+                      android:padding="12dp"/>
+
+                  <Button
+                      android:id="@+id/btnFindPid"
+                      android:layout_width="match_parent"
+                      android:layout_height="52dp"
+                      android:layout_marginTop="12dp"
+                      android:text="🔗 PID BUL"
+                      android:textColor="#FFFFFF"
+                      android:textStyle="bold"
+                      android:backgroundTint="@color/btn_blue"/>
+
+                  <View
+                      android:layout_width="match_parent"
+                      android:layout_height="1dp"
+                      android:background="@color/bg_card"
+                      android:layout_marginVertical="20dp"/>
+
+                  <TextView
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="❤️ HP ARAMA"
+                      android:textColor="@color/accent_blue"
+                      android:textSize="13sp"
+                      android:textStyle="bold"
+                      android:paddingBottom="6dp"/>
+
+                  <EditText
+                      android:id="@+id/etHP"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:hint="HP değerini gir (örn: 1500)"
+                      android:textColor="@color/text_light"
+                      android:textColorHint="@color/text_dim"
+                      android:backgroundTint="@color/accent_blue"
+                      android:inputType="numberDecimal"
+                      android:padding="12dp"/>
+
+                  <Button
+                      android:id="@+id/btnScanHP"
+                      android:layout_width="match_parent"
+                      android:layout_height="52dp"
+                      android:layout_marginTop="12dp"
+                      android:text="🔍 HP ARA"
+                      android:textColor="#FFFFFF"
+                      android:textStyle="bold"
+                      android:backgroundTint="@color/btn_green"/>
+
+                  <View
+                      android:layout_width="match_parent"
+                      android:layout_height="1dp"
+                      android:background="@color/bg_card"
+                      android:layout_marginVertical="20dp"/>
+
+                  <TextView
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="💀 HACK MENÜSÜ"
+                      android:textColor="@color/accent_blue"
+                      android:textSize="13sp"
+                      android:textStyle="bold"
+                      android:paddingBottom="6dp"/>
+
+                  <Button
+                      android:id="@+id/btnRange"
+                      android:layout_width="match_parent"
+                      android:layout_height="56dp"
+                      android:text="🎯 UZAKTAN VURMA (KAPALI)"
+                      android:textColor="#FFFFFF"
+                      android:textStyle="bold"
+                      android:backgroundTint="@color/btn_red"/>
+
+                  <Button
+                      android:id="@+id/btnSpeed"
+                      android:layout_width="match_parent"
+                      android:layout_height="56dp"
+                      android:layout_marginTop="8dp"
+                      android:text="⚡ 7X HIZ (KAPALI)"
+                      android:textColor="#FFFFFF"
+                      android:textStyle="bold"
+                      android:backgroundTint="@color/btn_red"/>
+
+                  <TextView
+                      android:id="@+id/tvStatus"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="Durum: Bekleniyor..."
+                      android:textColor="@color/text_dim"
+                      android:textSize="12sp"
+                      android:fontFamily="monospace"
+                      android:paddingTop="16dp"
+                      android:paddingBottom="8dp"/>
+
+                  <ScrollView
+                      android:layout_width="match_parent"
+                      android:layout_height="180dp"
+                      android:background="@color/bg_panel">
+
+                      <TextView
+                          android:id="@+id/tvLog"
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:padding="10dp"
+                          android:textColor="@color/accent_cyan"
+                          android:textSize="11sp"
+                          android:fontFamily="monospace"/>
+                  </ScrollView>
+              </LinearLayout>
+          </ScrollView>
+          EOF
+
+          cat > proj/app/src/main/java/com/moon/cheat/MemoryEngine.kt <<'EOF'
+          package com.moon.cheat
+
+          import java.io.File
+          import java.io.RandomAccessFile
+
+          object MemoryEngine {
+              data class Region(val start: Long, val end: Long, val perms: String, val path: String)
+
+              fun findPid(pkg: String): Int {
+                  val dirs = File("/proc").listFiles() ?: return -1
+                  for (d in dirs) {
+                      if (!d.isDirectory) continue
+                      val pid = d.name.toIntOrNull() ?: continue
+                      try {
+                          val cmd = File(d, "cmdline").readText().trim('\u0000')
+                          if (cmd.contains(pkg)) return pid
+                      } catch (_: Exception) {}
+                  }
+                  return -1
+              }
+
+              fun readMaps(pid: Int): List<Region> {
+                  val out = mutableListOf<Region>()
+                  try {
+                      File("/proc/$pid/maps").forEachLine { line ->
+                          val p = line.split(" ", limit = 6)
+                          if (p.size >= 6) {
+                              val r = p[0].split("-")
+                              if (r.size == 2) {
+                                  try {
+                                      out.add(Region(r[0].toLong(16), r[1].toLong(16), p[1], p[5]))
+                                  } catch (_: Exception) {}
+                              }
+                          }
+                      }
+                  } catch (_: Exception) {}
+                  return out
+              }
+
+              fun readBytes(pid: Int, addr: Long, size: Int): ByteArray? {
+                  return try {
+                      RandomAccessFile("/proc/$pid/mem", "r").use { f ->
+                          f.seek(addr); val b = ByteArray(size); f.readFully(b); b
+                      }
+                  } catch (_: Exception) { null }
+              }
+
+              fun writeBytes(pid: Int, addr: Long, data: ByteArray): Boolean {
+                  return try {
+                      RandomAccessFile("/proc/$pid/mem", "rw").use { f ->
+                          f.seek(addr); f.write(data)
+                      }
+                      true
+                  } catch (_: Exception) { false }
+              }
+
+              fun readFloat(pid: Int, addr: Long): Float? {
+                  val b = readBytes(pid, addr, 4) ?: return null
+                  var v = 0
+                  for (i in 0 until 4) v = v or ((b[i].toInt() and 0xFF) shl (8 * i))
+                  return Float.fromBits(v)
+              }
+
+              fun writeFloat(pid: Int, addr: Long, value: Float): Boolean {
+                  val bits = value.toRawBits()
+                  val b = ByteArray(4) { i -> ((bits shr (8 * i)) and 0xFF).toByte() }
+                  return writeBytes(pid, addr, b)
+              }
+
+              fun scanFloat(pid: Int, value: Float, maxResults: Int = 300): List<Long> {
+                  val results = mutableListOf<Long>()
+                  val target = value.toRawBits()
+                  val maps = readMaps(pid)
+                  for (m in maps) {
+                      if (!m.perms.startsWith("r")) continue
+                      val size = (m.end - m.start).toInt()
+                      if (size <= 0 || size > 8_000_000) continue
+                      val data = readBytes(pid, m.start, size) ?: continue
+                      var i = 0
+                      while (i <= size - 4) {
+                          val bits = (data[i].toInt() and 0xFF) or
+                                     ((data[i+1].toInt() and 0xFF) shl 8) or
+                                     ((data[i+2].toInt() and 0xFF) shl 16) or
+                                     ((data[i+3].toInt() and 0xFF) shl 24)
+                          if (bits == target) {
+                              results.add(m.start + i)
+                              if (results.size >= maxResults) return results
+                          }
+                          i += 4
+                      }
+                  }
+                  return results
+              }
+          }
+          EOF
+
+          cat > proj/app/src/main/java/com/moon/cheat/MainActivity.kt <<'EOF'
+          package com.moon.cheat
+
+          import android.animation.ObjectAnimator
+          import android.os.Bundle
+          import android.widget.*
+          import androidx.appcompat.app.AppCompatActivity
+          import kotlinx.coroutines.*
+
+          class MainActivity : AppCompatActivity() {
+
+              private lateinit var etPackage: EditText
+              private lateinit var etHP: EditText
+              private lateinit var tvStatus: TextView
+              private lateinit var tvLog: TextView
+              private lateinit var btnRange: Button
+              private lateinit var btnSpeed: Button
+
+              private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+              private var pid = -1
+              private var hpAddr = -1L
+              private var rangeOn = false
+              private var speedOn = false
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContentView(R.layout.activity_main)
+
+                  etPackage = findViewById(R.id.etPackage)
+                  etHP = findViewById(R.id.etHP)
+                  tvStatus = findViewById(R.id.tvStatus)
+                  tvLog = findViewById(R.id.tvLog)
+                  btnRange = findViewById(R.id.btnRange)
+                  btnSpeed = findViewById(R.id.btnSpeed)
+
+                  // Başlık animasyonu
+                  val title = findViewById<TextView>(R.id.etPackage)
+                  ObjectAnimator.ofFloat(title, "alpha", 0.5f, 1f, 0.5f).apply {
+                      duration = 2000
+                      repeatCount = ObjectAnimator.INFINITE
+                      start()
+                  }
+
+                  findViewById<Button>(R.id.btnFindPid).setOnClickListener { findPid() }
+                  findViewById<Button>(R.id.btnScanHP).setOnClickListener { scanHP() }
+                  btnRange.setOnClickListener { toggleRange() }
+                  btnSpeed.setOnClickListener { toggleSpeed() }
+              }
+
+              private fun log(s: String) {
+                  runOnUiThread { tvLog.append("$s\n") }
+              }
+
+              private fun findPid() {
+                  val pkg = etPackage.text.toString().trim()
+                  if (pkg.isEmpty()) { log("❌ Paket adı boş"); return }
+                  scope.launch {
+                      pid = MemoryEngine.findPid(pkg)
+                      withContext(Dispatchers.Main) {
+                          if (pid > 0) {
+                              log("✅ PID bulundu: $pid")
+                              tvStatus.text = "Durum: Bağlı (PID=$pid)"
+                          } else {
+                              log("❌ PID bulunamadı — oyun açık mı?")
+                              tvStatus.text = "Durum: Bağlantı yok"
+                          }
+                      }
+                  }
+              }
+
+              private fun scanHP() {
+                  if (pid <= 0) { log("❌ Önce PID bul"); return }
+                  val hp = etHP.text.toString().toFloatOrNull() ?: 0f
+                  if (hp <= 0f) { log("❌ Geçerli HP gir"); return }
+                  scope.launch {
+                      log("🔍 Taranıyor: $hp")
+                      val list = MemoryEngine.scanFloat(pid, hp)
+                      withContext(Dispatchers.Main) {
+                          log("✅ ${list.size} adres bulundu")
+                          list.take(5).forEach { log("   0x${it.toString(16)}") }
+                          if (list.isNotEmpty()) {
+                              hpAddr = list[0]
+                              tvStatus.text = "Durum: HP=0x${hpAddr.toString(16)}"
+                          }
+                      }
+                  }
+              }
+
+              private fun toggleRange() {
+                  if (pid <= 0 || hpAddr <= 0) { log("❌ Önce PID + HP bul"); return }
+                  rangeOn = !rangeOn
+                  scope.launch {
+                      val addr = hpAddr + 0x14
+                      if (rangeOn) {
+                          val ok = MemoryEngine.writeFloat(pid, addr, 9999f)
+                          withContext(Dispatchers.Main) {
+                              log(if (ok) "🎯 Uzaktan vurma AÇIK" else "❌ Yazma başarısız")
+                              btnRange.text = "🎯 UZAKTAN VURMA (AÇIK)"
+                              btnRange.setBackgroundColor(0xFF00C853.toInt())
+                          }
+                      } else {
+                          MemoryEngine.writeFloat(pid, addr, 3.5f)
+                          withContext(Dispatchers.Main) {
+                              log("🎯 Uzaktan vurma KAPALI")
+                              btnRange.text = "🎯 UZAKTAN VURMA (KAPALI)"
+                              btnRange.setBackgroundColor(0xFFFF1744.toInt())
+                          }
+                      }
+                  }
+              }
+
+              private fun toggleSpeed() {
+                  if (pid <= 0 || hpAddr <= 0) { log("❌ Önce PID + HP bul"); return }
+                  speedOn = !speedOn
+                  scope.launch {
+                      val addr = hpAddr + 0x18
+                      if (speedOn) {
+                          val cur = MemoryEngine.readFloat(pid, addr) ?: 5f
+                          val ok = MemoryEngine.writeFloat(pid, addr, cur * 7f)
+                          withContext(Dispatchers.Main) {
+                              log(if (ok) "⚡ 7x hız AÇIK (eski=$cur)" else "❌ Yazma başarısız")
+                              btnSpeed.text = "⚡ 7X HIZ (AÇIK)"
+                              btnSpeed.setBackgroundColor(0xFF00C853.toInt())
+                          }
+                      } else {
+                          val cur = MemoryEngine.readFloat(pid, addr) ?: 35f
+                          MemoryEngine.writeFloat(pid, addr, cur / 7f)
+                          withContext(Dispatchers.Main) {
+                              log("⚡ 7x hız KAPALI")
+                              btnSpeed.text = "⚡ 7X HIZ (KAPALI)"
+                              btnSpeed.setBackgroundColor(0xFFFF1744.toInt())
+                          }
+                      }
+                  }
+              }
+
+              override fun onDestroy() {
+                  super.onDestroy()
+                  scope.cancel()
+              }
+          }
+          EOF
+
+      - name: Build APK
+        run: |
+          cd proj
+          gradle assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mooncheat-apk
+          path: proj/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
