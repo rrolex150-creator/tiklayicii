@@ -1,0 +1,506 @@
+name: MoonUltimatePremium
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK (Manuel & Hatasız)
+        run: |
+          echo "yes" | sudo mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+          sudo wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+          sudo unzip -q tools.zip
+          sudo mv cmdline-tools latest
+          sudo rm tools.zip
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Proje dosyalarini olustur
+        run: |
+          mkdir -p proj/app/src/main/java/com/moon/ultimate
+          mkdir -p proj/app/src/main/res/values
+          mkdir -p proj/app/src/main/res/layout
+          mkdir -p proj/app/src/main/res/drawable
+
+          cat > proj/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+          rootProject.name = "MoonUltimatePremium"
+          include ':app'
+          EOF
+
+          cat > proj/gradle.properties <<'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx4g
+          EOF
+
+          cat > proj/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+          }
+          EOF
+
+          cat > proj/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.moon.ultimate'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.moon.ultimate'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = '17' }
+          }
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.12.0'
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.11.0'
+              implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+          }
+          EOF
+
+          # VEKTÖR LOGO (BASE64 yerine hatasız çalışan XML)
+          cat > proj/app/src/main/res/drawable/ic_logo.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+              <path
+                  android:fillColor="#0B0C10"
+                  android:pathData="M0,0h108v108h-108z" />
+              <path
+                  android:fillColor="#FFD700"
+                  android:pathData="M54,20L64,44H90L69,58L77,82L54,68L31,82L39,58L18,44H44Z" />
+          </vector>
+          EOF
+
+          cat > proj/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application
+                  android:allowBackup="true"
+                  android:icon="@drawable/ic_logo"
+                  android:label="MoonUltimate"
+                  android:theme="@style/AppTheme"
+                  android:usesCleartextTraffic="true">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          # SİYAH & ALTIN TEMA
+          cat > proj/app/src/main/res/values/colors.xml <<'EOF'
+          <resources>
+              <color name="bg_dark">#0B0C10</color>
+              <color name="bg_panel">#1F2833</color>
+              <color name="accent_gold">#FFD700</color>
+              <color name="text_main">#FFFFFF</color>
+              <color name="text_sub">#C5C6C7</color>
+              <color name="btn_green">#00E676</color>
+              <color name="btn_red">#FF1744</color>
+              <color name="btn_blue">#2979FF</color>
+          </resources>
+          EOF
+
+          cat > proj/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+                  <item name="colorPrimary">@color/accent_gold</item>
+                  <item name="colorPrimaryVariant">@color/bg_panel</item>
+                  <item name="colorOnPrimary">#000000</item>
+                  <item name="android:statusBarColor">@color/bg_dark</item>
+                  <item name="android:navigationBarColor">@color/bg_dark</item>
+                  <item name="android:windowBackground">@color/bg_dark</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > proj/app/src/main/res/layout/activity_main.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="@color/bg_dark">
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="vertical"
+                  android:padding="16dp">
+
+                  <TextView
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="👑 MOON ULTIMATE 👑"
+                      android:textColor="@color/accent_gold"
+                      android:textSize="24sp"
+                      android:textStyle="bold"
+                      android:gravity="center"
+                      android:paddingBottom="16dp"/>
+
+                  <TextView
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="Bellek Tarayıcı &amp; Offset Bulucu"
+                      android:textColor="@color/text_sub"
+                      android:textSize="12sp"
+                      android:gravity="center"
+                      android:paddingBottom="20dp"/>
+
+                  <EditText
+                      android:id="@+id/etPkg"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:hint="Oyun Paket Adı (com.metin2)"
+                      android:textColor="@color/text_main"
+                      android:backgroundTint="@color/accent_gold"
+                      android:inputType="text"
+                      android:padding="12dp"/>
+
+                  <Button
+                      android:id="@+id/btnAttach"
+                      android:layout_width="match_parent"
+                      android:layout_height="50dp"
+                      android:layout_marginTop="8dp"
+                      android:text="🔗 BELLEĞE BAĞLAN"
+                      android:textColor="#000"
+                      android:textStyle="bold"
+                      android:backgroundTint="@color/accent_gold"/>
+
+                  <View
+                      android:layout_width="match_parent"
+                      android:layout_height="1dp"
+                      android:background="@color/bg_panel"
+                      android:layout_marginVertical="16dp"/>
+
+                  <TextView
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:text="🔍 DEĞER TARAMA (HP, MP, HIZ)"
+                      android:textColor="@color/accent_gold"
+                      android:textStyle="bold"
+                      android:layout_marginBottom="8dp"/>
+
+                  <EditText
+                      android:id="@+id/etValue"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:hint="Değer Gir (Örn: 1500)"
+                      android:textColor="@color/text_main"
+                      android:backgroundTint="@color/accent_gold"
+                      android:inputType="numberDecimal"
+                      android:padding="12dp"/>
+
+                  <LinearLayout
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="horizontal"
+                      android:layout_marginTop="8dp">
+
+                      <Button
+                          android:id="@+id/btnFirstScan"
+                          android:layout_width="0dp"
+                          android:layout_height="50dp"
+                          android:layout_weight="1"
+                          android:text="İLK TARAMA"
+                          android:textColor="#FFF"
+                          android:backgroundTint="@color/btn_green"/>
+
+                      <Button
+                          android:id="@+id/btnNextScan"
+                          android:layout_width="0dp"
+                          android:layout_height="50dp"
+                          android:layout_weight="1"
+                          android:layout_marginStart="8dp"
+                          android:text="FİLTRELE"
+                          android:textColor="#FFF"
+                          android:backgroundTint="@color/btn_blue"
+                          android:enabled="false"/>
+                  </LinearLayout>
+
+                  <EditText
+                      android:id="@+id/etNewValue"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:hint="Yeni Değer (Değiştirmek için)"
+                      android:textColor="@color/text_main"
+                      android:backgroundTint="@color/btn_red"
+                      android:inputType="numberDecimal"
+                      android:padding="12dp"
+                      android:layout_marginTop="16dp"/>
+
+                  <Button
+                      android:id="@+id/btnWrite"
+                      android:layout_width="match_parent"
+                      android:layout_height="56dp"
+                      android:layout_marginTop="8dp"
+                      android:text="💀 BULUNAN ADRESE YAZ"
+                      android:textColor="#FFF"
+                      android:textStyle="bold"
+                      android:backgroundTint="@color/btn_red"/>
+
+                  <TextView
+                      android:id="@+id/tvLog"
+                      android:layout_width="match_parent"
+                      android:layout_height="180dp"
+                      android:layout_marginTop="16dp"
+                      android:background="@color/bg_panel"
+                      android:padding="10dp"
+                      android:textColor="@color/accent_gold"
+                      android:fontFamily="monospace"
+                      android:textSize="11sp"/>
+              </LinearLayout>
+          </ScrollView>
+          EOF
+
+          cat > proj/app/src/main/java/com/moon/ultimate/MemoryEngine.kt <<'EOF'
+          package com.moon.ultimate
+
+          import java.io.File
+          import java.io.RandomAccessFile
+
+          object MemoryEngine {
+              data class Region(val start: Long, val end: Long, val perms: String, val path: String)
+
+              fun getPid(pkg: String): Int {
+                  val dirs = File("/proc").listFiles() ?: return -1
+                  for (d in dirs) {
+                      if (!d.isDirectory) continue
+                      val pid = d.name.toIntOrNull() ?: continue
+                      try {
+                          val cmd = File(d, "cmdline").readText().trim('\u0000')
+                          if (cmd.contains(pkg)) return pid
+                      } catch (_: Exception) {}
+                  }
+                  return -1
+              }
+
+              fun getMaps(pid: Int): List<Region> {
+                  val list = mutableListOf<Region>()
+                  try {
+                      File("/proc/$pid/maps").forEachLine { line ->
+                          val p = line.split(" ", limit = 6)
+                          if (p.size >= 6) {
+                              val r = p[0].split("-")
+                              if (r.size == 2) {
+                                  try {
+                                      list.add(Region(r[0].toLong(16), r[1].toLong(16), p[1], p[5]))
+                                  } catch (_: Exception) {}
+                              }
+                          }
+                      }
+                  } catch (_: Exception) {}
+                  return list
+              }
+
+              fun read(pid: Int, addr: Long, size: Int): ByteArray? {
+                  return try {
+                      RandomAccessFile("/proc/$pid/mem", "r").use { f ->
+                          f.seek(addr); val b = ByteArray(size); f.readFully(b); b
+                      }
+                  } catch (_: Exception) { null }
+              }
+
+              fun write(pid: Int, addr: Long, data: ByteArray): Boolean {
+                  return try {
+                      RandomAccessFile("/proc/$pid/mem", "rw").use { f ->
+                          f.seek(addr); f.write(data)
+                      }
+                      true
+                  } catch (_: Exception) { false }
+              }
+
+              fun scanFloat(pid: Int, target: Float): MutableList<Long> {
+                  val results = mutableListOf<Long>()
+                  val targetBits = target.toRawBits()
+                  val maps = getMaps(pid).filter { it.perms.startsWith("r") }
+                  for (m in maps) {
+                      val size = (m.end - m.start).toInt()
+                      if (size <= 0 || size > 20_000_000) continue
+                      val data = read(pid, m.start, size) ?: continue
+                      var i = 0
+                      while (i <= size - 4) {
+                          val bits = (data[i].toInt() and 0xFF) or
+                                     ((data[i+1].toInt() and 0xFF) shl 8) or
+                                     ((data[i+2].toInt() and 0xFF) shl 16) or
+                                     ((data[i+3].toInt() and 0xFF) shl 24)
+                          if (bits == targetBits) results.add(m.start + i)
+                          i += 4
+                      }
+                  }
+                  return results
+              }
+
+              fun writeFloat(pid: Int, addr: Long, value: Float): Boolean {
+                  val bits = value.toRawBits()
+                  val b = ByteArray(4) { i -> ((bits shr (8 * i)) and 0xFF).toByte() }
+                  return write(pid, addr, b)
+              }
+          }
+          EOF
+
+          cat > proj/app/src/main/java/com/moon/ultimate/MainActivity.kt <<'EOF'
+          package com.moon.ultimate
+
+          import android.os.Bundle
+          import android.widget.Button
+          import android.widget.EditText
+          import android.widget.TextView
+          import androidx.appcompat.app.AppCompatActivity
+          import kotlinx.coroutines.*
+
+          class MainActivity : AppCompatActivity() {
+              private lateinit var tvLog: TextView
+              private lateinit var etPkg: EditText
+              private lateinit var etValue: EditText
+              private lateinit var etNewValue: EditText
+              private lateinit var btnNextScan: Button
+              private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+              private var pid = -1
+              private var currentResults: List<Long> = emptyList()
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContentView(R.layout.activity_main)
+
+                  tvLog = findViewById(R.id.tvLog)
+                  etPkg = findViewById(R.id.etPkg)
+                  etValue = findViewById(R.id.etValue)
+                  etNewValue = findViewById(R.id.etNewValue)
+                  btnNextScan = findViewById(R.id.btnNextScan)
+
+                  findViewById<Button>(R.id.btnAttach).setOnClickListener { attach() }
+                  findViewById<Button>(R.id.btnFirstScan).setOnClickListener { firstScan() }
+                  btnNextScan.setOnClickListener { nextScan() }
+                  findViewById<Button>(R.id.btnWrite).setOnClickListener { writeHack() }
+              }
+
+              private fun log(s: String) { runOnUiThread { tvLog.append("$s\n") } }
+
+              private fun attach() {
+                  val pkg = etPkg.text.toString().trim()
+                  if (pkg.isEmpty()) { log("❌ Paket adı boş"); return }
+                  scope.launch {
+                      pid = MemoryEngine.getPid(pkg)
+                      withContext(Dispatchers.Main) {
+                          if (pid > 0) log("✅ Bağlandı! PID: $pid")
+                          else log("❌ PID bulunamadı. Oyun açık mı?")
+                      }
+                  }
+              }
+
+              private fun firstScan() {
+                  if (pid <= 0) { log("❌ Önce bağlan"); return }
+                  val valStr = etValue.text.toString().trim()
+                  if (valStr.isEmpty()) { log("❌ Değer gir"); return }
+
+                  scope.launch {
+                      log("🔍 İlk tarama başladı: $valStr")
+                      val res = MemoryEngine.scanFloat(pid, valStr.toFloat())
+                      withContext(Dispatchers.Main) {
+                          currentResults = res
+                          log("✅ ${res.size} adres bulundu.")
+                          if (res.isNotEmpty()) btnNextScan.isEnabled = true
+                      }
+                  }
+              }
+
+              private fun nextScan() {
+                  if (pid <= 0 || currentResults.isEmpty()) return
+                  val valStr = etValue.text.toString().trim()
+                  if (valStr.isEmpty()) return
+
+                  scope.launch {
+                      log("⏭ Filtreleme yapılıyor...")
+                      val newResults = mutableListOf<Long>()
+                      val target = valStr.toFloat().toRawBits()
+                      for (addr in currentResults) {
+                          val data = MemoryEngine.read(pid, addr, 4) ?: continue
+                          val bits = (data[0].toInt() and 0xFF) or
+                                     ((data[1].toInt() and 0xFF) shl 8) or
+                                     ((data[2].toInt() and 0xFF) shl 16) or
+                                     ((data[3].toInt() and 0xFF) shl 24)
+                          if (bits == target) newResults.add(addr)
+                      }
+                      withContext(Dispatchers.Main) {
+                          currentResults = newResults
+                          log("✅ ${newResults.size} adres kaldı.")
+                          if (newResults.size == 1) {
+                              log("🎯 TEK ADRES BULUNDU: 0x${newResults[0].toString(16)}")
+                          }
+                      }
+                  }
+              }
+
+              private fun writeHack() {
+                  if (pid <= 0 || currentResults.isEmpty()) { log("❌ Önce tarama yap"); return }
+                  val newVal = etNewValue.text.toString().trim().toFloatOrNull()
+                  if (newVal == null) { log("❌ Yeni değer geçersiz"); return }
+
+                  scope.launch {
+                      var successCount = 0
+                      for (addr in currentResults) {
+                          if (MemoryEngine.writeFloat(pid, addr, newVal)) successCount++
+                      }
+                      withContext(Dispatchers.Main) {
+                          if (successCount > 0) log("💀 HACK BAŞARILI! $successCount adres değiştirildi.")
+                          else log("❌ Yazma başarısız (Root yok veya sistem engelliyor).")
+                      }
+                  }
+              }
+
+              override fun onDestroy() {
+                  super.onDestroy()
+                  scope.cancel()
+              }
+          }
+          EOF
+
+      - name: Build APK
+        run: |
+          cd proj
+          gradle assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: moonultimate-premium-apk
+          path: proj/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
