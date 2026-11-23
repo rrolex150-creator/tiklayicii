@@ -1,0 +1,263 @@
+name: MoonUltimatePremium
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Android SDK Lisanslarini Kabul Et
+        run: yes | sdkmanager --licenses || true
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Proje dosyalarini olustur
+        run: |
+          mkdir -p proj/app/src/main/java/com/moon/ultimate
+          mkdir -p proj/app/src/main/res/values
+          mkdir -p proj/app/src/main/res/layout
+          mkdir -p proj/app/src/main/res/drawable
+
+          cat > proj/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+          rootProject.name = "MoonUltimatePremium"
+          include ':app'
+          EOF
+
+          cat > proj/gradle.properties <<'EOF'
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx4g
+          EOF
+
+          cat > proj/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+          }
+          EOF
+
+          cat > proj/app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.moon.ultimate'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.moon.ultimate'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = '17' }
+          }
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.12.0'
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.11.0'
+              implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+          }
+          EOF
+
+          cat > proj/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application
+                  android:allowBackup="true"
+                  android:icon="@drawable/ic_logo"
+                  android:label="MoonUltimate"
+                  android:theme="@style/AppTheme"
+                  android:usesCleartextTraffic="true">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          # SİYAH & ALTIN TEMA RENKLERİ
+          cat > proj/app/src/main/res/values/colors.xml <<'EOF'
+          <resources>
+              <color name="bg_dark">#0B0C10</color>
+              <color name="bg_panel">#1F2833</color>
+              <color name="accent_gold">#FFD700</color>
+              <color name="text_main">#FFFFFF</color>
+              <color name="text_sub">#C5C6C7</color>
+              <color name="btn_green">#00E676</color>
+              <color name="btn_red">#FF1744</color>
+              <color name="btn_blue">#2979FF</color>
+          </resources>
+          EOF
+
+          cat > proj/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+                  <item name="colorPrimary">@color/accent_gold</item>
+                  <item name="colorPrimaryVariant">@color/bg_panel</item>
+                  <item name="colorOnPrimary">#000000</item>
+                  <item name="android:statusBarColor">@color/bg_dark</item>
+                  <item name="android:navigationBarColor">@color/bg_dark</item>
+                  <item name="android:windowBackground">@color/bg_dark</item>
+              </style>
+          </resources>
+          EOF
+
+          # LOGO (BASE64)
+          base64 -d > proj/app/src/main/res/drawable/ic_logo.png <<'EOF'
+          iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAACXBIWXMAAAsTAAALEwEAmpwYAAAB
+          N2lDQ1BpY2MAAHicZVDLSgNBEJz1gQge1IuH0I0giopLFBQ8Cq5EwcZHstnEwG7S7CaC4C/4F/wF
+          /wV/wZ/gL3gQBAURwd5kA4mC4zT0UF1d3dM9A0R1q2zbag7Q6XTNfBoPZ7OLVvcFHniCHiZoW3bO
+          MM0yyrP5b4D4pJ8OAPhR/n8F43P/fz8B8WgqWy0B4jMAx2lZNQHxGoB2NlsuAeIeAKts2zYgTgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
+          2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4Aymzb
+          NiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2
+          IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYg
+          zgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDO
+          AMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4A
+          ymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDK
+          bNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps2zYgzgDKbNs2IM4AymzbNiDOAMps
