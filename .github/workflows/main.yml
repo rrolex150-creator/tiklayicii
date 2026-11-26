@@ -23,10 +23,12 @@ jobs:
 
       - name: Proje zip dosyasini ac
         run: |
-          test -f proje.zip || { echo "proje.zip bulunamadi: repoya proje.zip yukle"; exit 1; }
+          Z=$(find . -name proje.zip -not -path "./proj/*" | head -1)
+          test -n "$Z" || { echo "proje.zip bulunamadi: repoya proje.zip yukle" | tee build.log; ls -R . | head -40 | tee -a build.log; exit 1; }
+          echo "zip: $Z"
           rm -rf proj
-          unzip -q -o proje.zip
-          test -d proj || { echo "zip icinde proj klasoru yok"; exit 1; }
+          unzip -q -o "$Z" -d .
+          test -d proj || { echo "zip icinde proj klasoru yok" | tee build.log; exit 1; }
 
       - name: APK derle
         working-directory: proj
